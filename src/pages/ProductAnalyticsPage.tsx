@@ -91,7 +91,13 @@ export default function ProductAnalyticsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
+  // period values: "7" | "30" | "90" | "365" | "month" (uses selectedMonth)
   const [period, setPeriod] = useState("30");
+  // YYYY-MM string for month filter
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [search, setSearch] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("totalQty");
@@ -100,22 +106,40 @@ export default function ProductAnalyticsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [period]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period, selectedMonth]);
+
+  // Compute date range based on current period selection
+  const dateRange = useMemo(() => {
+    if (period === "month") {
+      const [y, m] = selectedMonth.split("-").map(Number);
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 0); // last day of month
+      const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const days = end.getDate();
+      return { from: fmt(start), to: fmt(end), days, label: start.toLocaleDateString("en-PK", { month: "long", year: "numeric" }) };
+    }
+    const days = Number(period);
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+    const fmt = (d: Date) => d.toISOString().split("T")[0];
+    return { from: fmt(start), to: fmt(end), days, label: `Last ${days} Days` };
+  }, [period, selectedMonth]);
 
   const fetchData = async () => {
     setLoading(true);
     setAnalyticsError(null);
     try {
-      const daysAgo = new Date();
-      daysAgo.setDate(daysAgo.getDate() - Number(period));
-      const dateStr = daysAgo.toISOString().split("T")[0];
+      const salesQuery = supabase
+        .from("sale_transactions")
+        .select("id, invoice_no, date, customer_id, subtotal, discount, total, paid_amount, payment_method, payment_status, notes, created_at")
+        .gte("date", dateRange.from)
+        .lte("date", dateRange.to)
+        .order("date", { ascending: false });
 
       const [salesRes, productsRes, contactsRes] = await Promise.all([
-        supabase
-          .from("sale_transactions")
-          .select("id, invoice_no, date, customer_id, subtotal, discount, total, paid_amount, payment_method, payment_status, notes, created_at")
-          .gte("date", dateStr)
-          .order("date", { ascending: false }),
+        salesQuery,
         supabase.from("products").select("id, name, selling_price, quantity, sku"),
         supabase.from("contacts").select("id, name, type, phone"),
       ]);
@@ -172,7 +196,7 @@ export default function ProductAnalyticsPage() {
     }
   };
 
-  const daysInPeriod = Number(period);
+  const daysInPeriod = dateRange.days;
 
   // ─── Core: Observe bills → build product analysis ────────────────
   const productAnalysis = useMemo(() => {
@@ -317,6 +341,46 @@ export default function ProductAnalyticsPage() {
     return Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [sales, saleItems]);
 
+  // Monthly aggregation across selected period — bills, revenue, items, unique customers
+  const monthlyBreakdown = useMemo(() => {
+    const saleDateMap = new Map<string, string>();
+    for (const s of sales) saleDateMap.set(s.id, s.date);
+    const monthMap = new Map<string, { month: string; label: string; bills: number; revenue: number; items: number; qty: number; customers: Set<string> }>();
+    for (const s of sales) {
+      if (!s.date) continue;
+      const month = s.date.slice(0, 7); // YYYY-MM
+      let entry = monthMap.get(month);
+      if (!entry) {
+        const [y, m] = month.split("-").map(Number);
+        const label = new Date(y, m - 1, 1).toLocaleDateString("en-PK", { month: "short", year: "numeric" });
+        entry = { month, label, bills: 0, revenue: 0, items: 0, qty: 0, customers: new Set() };
+        monthMap.set(month, entry);
+      }
+      entry.bills++;
+      entry.revenue += Number(s.total || 0);
+      if (s.customer_id) entry.customers.add(s.customer_id);
+    }
+    for (const item of saleItems) {
+      const date = saleDateMap.get(item.sale_id);
+      if (!date) continue;
+      const month = date.slice(0, 7);
+      const entry = monthMap.get(month);
+      if (entry) {
+        entry.items++;
+        entry.qty += Number(item.quantity || 0);
+      }
+    }
+    return Array.from(monthMap.values())
+      .map((e) => ({ month: e.month, label: e.label, bills: e.bills, revenue: e.revenue, items: e.items, qty: e.qty, uniqueCustomers: e.customers.size, avgBill: e.bills > 0 ? Math.round(e.revenue / e.bills) : 0 }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+  }, [sales, saleItems]);
+
+  // Top products of currently selected month (period === "month") — month-wise product ranking
+  const monthlyTopProducts = useMemo(() => {
+    return productAnalysis.slice(0, 25);
+  }, [productAnalysis]);
+
+
   // Top customers from bills
   const topCustomers = useMemo(() => {
     const customerMap = new Map<string, string>();
@@ -403,20 +467,31 @@ export default function ProductAnalyticsPage() {
               <BarChart3 className="h-6 w-6 text-primary" /> Product Analytics
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Observing {sales.length} bills — sorted by most selling products
+              Observing {sales.length} bills · {dateRange.label} ({dateRange.from} → {dateRange.to})
             </p>
           </div>
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Last 7 Days</SelectItem>
-              <SelectItem value="30">Last 30 Days</SelectItem>
-              <SelectItem value="90">Last 90 Days</SelectItem>
-              <SelectItem value="365">Last Year</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">Last 7 Days</SelectItem>
+                <SelectItem value="30">Last 30 Days</SelectItem>
+                <SelectItem value="90">Last 90 Days</SelectItem>
+                <SelectItem value="365">Last Year</SelectItem>
+                <SelectItem value="month">📅 Specific Month</SelectItem>
+              </SelectContent>
+            </Select>
+            {period === "month" && (
+              <Input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-[170px]"
+              />
+            )}
+          </div>
         </div>
 
         {/* Prominent Search Bar */}
@@ -488,12 +563,151 @@ export default function ProductAnalyticsPage() {
       <Tabs defaultValue="ranking" className="space-y-4">
         <TabsList className="flex flex-wrap h-auto gap-1 p-1">
           <TabsTrigger value="ranking">📊 Most Selling (Ranked)</TabsTrigger>
+          <TabsTrigger value="monthly">📅 Monthly Breakdown</TabsTrigger>
           <TabsTrigger value="fast">🔥 Fast Sellers</TabsTrigger>
           <TabsTrigger value="slow">🐢 Slow / Dead</TabsTrigger>
           <TabsTrigger value="bills">📈 Bill Trends</TabsTrigger>
           <TabsTrigger value="detail">🔍 Product Detail</TabsTrigger>
           <TabsTrigger value="report">📋 Products Report</TabsTrigger>
         </TabsList>
+
+        {/* ═══ Monthly Breakdown Tab ═══ */}
+        <TabsContent value="monthly" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" /> Month-wise Sales Trend
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Switch the period to <strong>Last Year</strong> for a 12-month view, or pick a specific month above for daily detail.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {monthlyBreakdown.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No bills in this period</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <ComposedChart data={monthlyBreakdown}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis yAxisId="left" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                    <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, color: "hsl(var(--foreground))" }} />
+                    <Bar yAxisId="left" dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Revenue (Rs.)" />
+                    <Line yAxisId="right" type="monotone" dataKey="bills" stroke="hsl(var(--accent))" strokeWidth={2} dot name="Bills" />
+                    <Line yAxisId="right" type="monotone" dataKey="qty" stroke="hsl(var(--chart-3))" strokeWidth={2} dot name="Items Sold" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" /> Monthly Summary Table
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {monthlyBreakdown.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No data to display</p>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Month</th>
+                        <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Bills</th>
+                        <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Revenue</th>
+                        <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Avg / Bill</th>
+                        <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Items</th>
+                        <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Units Sold</th>
+                        <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Unique Customers</th>
+                        <th className="px-4 py-3 text-center font-semibold text-muted-foreground">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monthlyBreakdown.map((m) => (
+                        <tr key={m.month} className="border-t border-border hover:bg-muted/30">
+                          <td className="px-4 py-3 font-medium text-foreground">{m.label}</td>
+                          <td className="px-4 py-3 text-right text-primary font-semibold">{m.bills.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right text-accent font-bold">{formatPKR(m.revenue)}</td>
+                          <td className="px-4 py-3 text-right text-muted-foreground">{formatPKR(m.avgBill)}</td>
+                          <td className="px-4 py-3 text-right">{m.items.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right">{m.qty.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right">{m.uniqueCustomers}</td>
+                          <td className="px-4 py-3 text-center">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => { setPeriod("month"); setSelectedMonth(m.month); }}
+                            >
+                              <Eye className="h-3 w-3 mr-1" /> Drill in
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-muted/30 font-bold">
+                      <tr>
+                        <td className="px-4 py-3">Total ({monthlyBreakdown.length} months)</td>
+                        <td className="px-4 py-3 text-right">{monthlyBreakdown.reduce((s, m) => s + m.bills, 0).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right text-accent">{formatPKR(monthlyBreakdown.reduce((s, m) => s + m.revenue, 0))}</td>
+                        <td className="px-4 py-3 text-right">—</td>
+                        <td className="px-4 py-3 text-right">{monthlyBreakdown.reduce((s, m) => s + m.items, 0).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right">{monthlyBreakdown.reduce((s, m) => s + m.qty, 0).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right">—</td>
+                        <td className="px-4 py-3"></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {period === "month" && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-success" /> Top Products in {dateRange.label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {monthlyTopProducts.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No products sold in {dateRange.label}</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Rank</th>
+                          <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Product</th>
+                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Units Sold</th>
+                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Revenue</th>
+                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Bills</th>
+                          <th className="px-4 py-3 text-center font-semibold text-muted-foreground">Speed</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {monthlyTopProducts.map((p, i) => (
+                          <tr key={p.product_id} className="border-t border-border hover:bg-muted/30">
+                            <td className="px-4 py-3 font-bold">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}</td>
+                            <td className="px-4 py-3 font-medium text-foreground">{p.product_name}</td>
+                            <td className="px-4 py-3 text-right font-bold">{p.totalQty.toLocaleString()}</td>
+                            <td className="px-4 py-3 text-right text-accent font-semibold">{formatPKR(p.totalRevenue)}</td>
+                            <td className="px-4 py-3 text-right text-muted-foreground">{p.orderCount}</td>
+                            <td className="px-4 py-3 text-center"><Badge variant="outline" className={speedBg(p.speedLabel)}>{p.speedLabel}</Badge></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
 
         {/* ═══ Most Selling Products - Ranked ═══ */}
         <TabsContent value="ranking" className="space-y-4">

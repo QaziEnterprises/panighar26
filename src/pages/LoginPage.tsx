@@ -13,29 +13,12 @@ const MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 60_000;
 const ATTEMPT_WINDOW_MS = 300_000;
 
-async function checkServerRateLimit(email: string): Promise<{ allowed: boolean; remaining: number }> {
-  try {
-    const { data, error } = await supabase.functions.invoke("rate-limit", {
-      body: { email, action: "check" },
-    });
-    if (error) throw error;
-    return { allowed: data?.allowed ?? true, remaining: data?.remaining ?? MAX_ATTEMPTS };
-  } catch {
-    return { allowed: true, remaining: MAX_ATTEMPTS };
-  }
+// Server-side rate-limit edge function is not deployed; rely on client-side throttle below.
+async function checkServerRateLimit(_email: string): Promise<{ allowed: boolean; remaining: number }> {
+  return { allowed: true, remaining: MAX_ATTEMPTS };
 }
-
-async function recordServerAttempt(email: string) {
-  try {
-    await supabase.functions.invoke("rate-limit", { body: { email, action: "record" } });
-  } catch { /* best-effort */ }
-}
-
-async function clearServerAttempts(email: string) {
-  try {
-    await supabase.functions.invoke("rate-limit", { body: { email, action: "clear" } });
-  } catch { /* best-effort */ }
-}
+async function recordServerAttempt(_email: string) { /* no-op */ }
+async function clearServerAttempts(_email: string) { /* no-op */ }
 
 export default function LoginPage() {
   const savedEmail = (() => { if (typeof localStorage === 'undefined') return ''; try { return localStorage.getItem("remembered_email") || ''; } catch { return ''; } })();
