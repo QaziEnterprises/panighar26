@@ -270,7 +270,7 @@ export default function SummaryPage() {
             <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Paid</th>
             {showDue && <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Due</th>}
             {showBreakdown && <th className="py-2 px-3 text-left font-semibold text-muted-foreground">Split Detail</th>}
-            <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Time</th>
+            <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Date</th>
           </tr>
         </thead>
         <tbody>
