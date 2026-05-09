@@ -21,7 +21,7 @@ export default function CustomCursor() {
   const trailRefs = useRef<HTMLDivElement[]>([]);
   const [clicking, setClicking] = useState(false);
   const [hovering, setHovering] = useState(false);
-  const [cursorStyle, setCursorStyle] = useState<CursorStyle>("simple-dot");
+  const [cursorStyle, setCursorStyle] = useState<CursorStyle>(getCursorStyle);
   const pos = useRef({ x: -100, y: -100 });
   const trailPositions = useRef(Array.from({ length: 6 }, () => ({ x: -100, y: -100 })));
 
