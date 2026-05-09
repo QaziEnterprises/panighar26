@@ -51,10 +51,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   const sidebar = (
     <aside className={cn(
-      "fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar text-sidebar-foreground transition-transform",
+      "fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar text-sidebar-foreground transition-all duration-200",
       isMobile && !sidebarOpen && "-translate-x-full"
-    )} style={{ width: 'var(--sidebar-width, 16rem)' }}>
-      <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-6">
+    )} style={{ width: isMobile ? '16rem' : desktopWidth }}>
+      <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <Package className="h-7 w-7 text-sidebar-primary shrink-0" />
+          {!desktopCollapsed && <span className="text-lg font-bold tracking-tight whitespace-nowrap">Qazi Enterprises</span>}
+        </div>
+        {isMobile && (
+          <button onClick={() => setSidebarOpen(false)} className="text-sidebar-muted hover:text-sidebar-foreground">
+            <X className="h-5 w-5" />
+          </button>
+        )}
+      </div>
         <div className="flex items-center gap-2">
           <Package className="h-7 w-7 text-sidebar-primary" />
           <span className="text-lg font-bold tracking-tight">Qazi Enterprises</span>
