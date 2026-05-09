@@ -25,6 +25,7 @@ interface SaleBill {
   payment_status: string | null;
   customer_name: string | null;
   created_at: string;
+  date: string;
 }
 
 interface LedgerEntry {
@@ -33,6 +34,7 @@ interface LedgerEntry {
   credit: number;
   debit: number;
   contact_name: string | null;
+  date: string;
 }
 
 interface Expense {
@@ -41,6 +43,7 @@ interface Expense {
   description: string | null;
   payment_method: string | null;
   category_name: string | null;
+  date: string;
 }
 
 interface MethodTotals { cash: number; jazzcash: number; easypaisa: number; bank: number; }
