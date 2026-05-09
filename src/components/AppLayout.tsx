@@ -110,7 +110,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen">
       {isMobile && sidebarOpen && <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setSidebarOpen(false)} />}
       {sidebar}
-      <main className="flex-1" style={!isMobile ? { paddingLeft: 'var(--sidebar-width, 16rem)' } : undefined}>
+      <main className="flex-1 transition-all duration-200" style={!isMobile ? { paddingLeft: desktopWidth } : undefined}>
         {!isOnline && (
           <div className="sticky top-0 z-40 flex items-center justify-center gap-2 bg-destructive px-4 py-2 text-destructive-foreground text-sm font-medium">
             <WifiOff className="h-4 w-4" />
