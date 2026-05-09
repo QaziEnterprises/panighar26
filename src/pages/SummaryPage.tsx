@@ -293,7 +293,7 @@ export default function SummaryPage() {
                   </div>
                 </td>
               )}
-              <td className="py-2 px-3 text-right text-muted-foreground">{format(new Date(b.created_at), "hh:mm a")}</td>
+              <td className="py-2 px-3 text-right text-muted-foreground font-mono">{b.date ? format(parseISO(b.date), "MMM dd") : format(new Date(b.created_at), "MMM dd")}</td>
             </tr>
           ))}
         </tbody>
