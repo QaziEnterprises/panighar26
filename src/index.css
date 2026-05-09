@@ -414,3 +414,51 @@
   from { transform: translate3d(0,0,0) scale(1); }
   to   { transform: translate3d(10px,-12px,0) scale(1.06); }
 }
+
+/* ============== Global motion polish (whole app, including dashboard) ============== */
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.no-animations) button,
+  html:not(.no-animations) a,
+  html:not(.no-animations) [role="button"],
+  html:not(.no-animations) [role="tab"],
+  html:not(.no-animations) [role="menuitem"] {
+    transition: transform 0.2s var(--ease-out),
+                box-shadow 0.25s var(--ease-out),
+                background-color 0.2s var(--ease-out),
+                color 0.2s var(--ease-out),
+                border-color 0.2s var(--ease-out),
+                opacity 0.2s var(--ease-out);
+  }
+  html:not(.no-animations) button:active,
+  html:not(.no-animations) [role="button"]:active { transform: scale(0.97); }
+
+  html:not(.no-animations) .stat-card,
+  html:not(.no-animations) [class*="card"] {
+    transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out), border-color 0.25s var(--ease-out);
+  }
+
+  /* Page enter animation for routed views */
+  html:not(.no-animations) main > * {
+    animation: appPageIn 0.45s var(--ease-out) both;
+  }
+  @keyframes appPageIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Inputs focus polish */
+  html:not(.no-animations) input,
+  html:not(.no-animations) textarea,
+  html:not(.no-animations) select {
+    transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), background-color 0.2s var(--ease-out);
+  }
+
+  /* Dialog & dropdown subtle entrance is already provided by Radix; reinforce */
+  html:not(.no-animations) [data-state="open"][data-radix-popper-content-wrapper] > * {
+    animation: appPopIn 0.18s var(--ease-out) both;
+  }
+  @keyframes appPopIn {
+    from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+}

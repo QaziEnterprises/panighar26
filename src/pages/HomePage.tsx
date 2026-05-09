@@ -835,45 +835,106 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-foreground text-background py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="grid md:grid-cols-3 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 font-bold text-xl mb-3">
-                <span className="relative flex items-center justify-center h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-accent">
-                  <Droplets className="h-4 w-4 absolute -translate-x-[3px] text-primary-foreground" />
-                  <Sun className="h-4 w-4 absolute translate-x-[3px] translate-y-[1px] text-primary-foreground" />
+      <footer className="relative overflow-hidden text-white pt-16 pb-8 mt-8" style={{ background: "linear-gradient(135deg, hsl(222 47% 11%) 0%, hsl(217 91% 22%) 60%, hsl(199 95% 28%) 100%)" }}>
+        {/* Decorative glow */}
+        <div className="pointer-events-none absolute -top-32 -left-24 h-[420px] w-[420px] rounded-full bg-primary/20 blur-[120px]" />
+        <div className="pointer-events-none absolute -bottom-32 -right-24 h-[420px] w-[420px] rounded-full bg-accent/20 blur-[120px]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.06]" style={{
+          backgroundImage: "linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)",
+          backgroundSize: "44px 44px",
+        }} />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid md:grid-cols-12 gap-10 mb-10">
+            {/* Brand */}
+            <div className="md:col-span-5 space-y-4">
+              <div className="flex items-center gap-3 font-bold text-2xl">
+                <span className="relative flex items-center justify-center h-11 w-11 rounded-2xl bg-gradient-to-br from-primary to-accent shadow-[0_10px_30px_-8px_hsl(217_91%_50%/0.7)] transition-transform duration-500 hover:rotate-[10deg] hover:scale-110">
+                  <Droplets className="h-5 w-5 absolute -translate-x-[4px] text-white" />
+                  <Sun className="h-5 w-5 absolute translate-x-[4px] translate-y-[1px] text-white" />
                 </span>
-                {BRAND}
+                <span className="bg-gradient-to-r from-white via-white to-white/70 bg-clip-text text-transparent">{BRAND}</span>
               </div>
-              <p className="text-sm opacity-70">
-                Water Treatment Technologies (domestic &amp; commercial) and Solar System Establishment — serving Bahawalpur since 2019.
+              <p className="text-sm leading-relaxed text-white/70 max-w-md">
+                Water Treatment Technologies (domestic &amp; commercial) and Solar System Establishment — proudly serving Bahawalpur since 2019.
               </p>
+              <div className="flex items-center gap-2 pt-1">
+                {[
+                  { Icon: Phone, href: "tel:03007811479", label: "Call" },
+                  { Icon: Mail, href: "mailto:imrankhalilqazi@gmail.com", label: "Email" },
+                  { Icon: MapPin, href: "#contact", label: "Location" },
+                ].map(({ Icon, href, label }) => (
+                  <a key={label} href={href} aria-label={label}
+                     className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-white hover:bg-white hover:text-primary hover:-translate-y-1 hover:shadow-[0_10px_24px_-6px_hsl(217_91%_50%/0.55)] transition-all duration-300">
+                    <Icon className="h-4 w-4" />
+                  </a>
+                ))}
+              </div>
             </div>
-            <div>
-              <h4 className="font-semibold mb-3">Quick Links</h4>
-              <div className="space-y-2">
+
+            {/* Quick Links */}
+            <div className="md:col-span-3">
+              <h4 className="font-semibold mb-4 text-white/95 tracking-wide text-sm uppercase">Quick Links</h4>
+              <div className="grid grid-cols-2 gap-y-2 gap-x-3">
                 {NAV_LINKS.map((l) => (
-                  <button key={l.href} onClick={() => scrollTo(l.href)} className="block text-sm opacity-70 hover:opacity-100 transition-opacity">
+                  <button
+                    key={l.href}
+                    onClick={() => scrollTo(l.href)}
+                    className="group inline-flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition-all duration-300 hover:translate-x-1 text-left"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5 opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
                     {l.label}
                   </button>
                 ))}
               </div>
             </div>
-            <div>
-              <h4 className="font-semibold mb-3">Contact</h4>
-              <div className="space-y-2 text-sm opacity-70">
-                <div>0300-0317383 | 0300-7811479</div>
-                <div>imrankhalilqazi@gmail.com</div>
-                <div>muazbinshafi@gmail.com</div>
-                <div>Al Hafeez Manzil, Darbar Mahal Road, Near University Chowk, Bahawalpur</div>
-              </div>
+
+            {/* Contact */}
+            <div className="md:col-span-4">
+              <h4 className="font-semibold mb-4 text-white/95 tracking-wide text-sm uppercase">Get in Touch</h4>
+              <ul className="space-y-3 text-sm">
+                <li className="flex items-start gap-3 group">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 border border-white/10 group-hover:bg-white group-hover:text-primary transition-all duration-300">
+                    <Phone className="h-3.5 w-3.5" />
+                  </span>
+                  <div className="text-white/80">
+                    <a href="tel:03000317383" className="block hover:text-white transition-colors">0300-0317383</a>
+                    <a href="tel:03007811479" className="block hover:text-white transition-colors">0300-7811479</a>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3 group">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 border border-white/10 group-hover:bg-white group-hover:text-primary transition-all duration-300">
+                    <Mail className="h-3.5 w-3.5" />
+                  </span>
+                  <div className="text-white/80 break-all">
+                    <a href="mailto:imrankhalilqazi@gmail.com" className="block hover:text-white transition-colors">imrankhalilqazi@gmail.com</a>
+                    <a href="mailto:muazbinshafi@gmail.com" className="block hover:text-white transition-colors">muazbinshafi@gmail.com</a>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3 group">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 border border-white/10 group-hover:bg-white group-hover:text-primary transition-all duration-300">
+                    <MapPin className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="text-white/80 leading-relaxed">
+                    Al Hafeez Manzil, Darbar Mahal Road, Near University Chowk, Bahawalpur
+                  </span>
+                </li>
+              </ul>
             </div>
           </div>
-          <div className="border-t border-background/20 pt-6 text-center text-sm opacity-60">
-            <p>© {new Date().getFullYear()} {BRAND}. Water Treatment Technologies &amp; Solar System Establishment. All rights reserved.</p>
-            <p className="mt-2 flex items-center justify-center gap-1">
-              Made by <span className="font-semibold">MuazBinShafi</span> with <Heart className="h-4 w-4 fill-destructive text-destructive inline" /> using <span className="font-semibold">Lovable</span>
+
+          {/* Divider */}
+          <div className="h-px w-full bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+
+          <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-sm">
+            <p className="text-white/60 text-center md:text-left">
+              © {new Date().getFullYear()} <span className="font-semibold text-white/80">{BRAND}</span>. All rights reserved.
+            </p>
+            <p className="flex items-center gap-1.5 text-white/60 flex-wrap justify-center">
+              Made by
+              <span className="font-semibold text-white">MuazBinShafi</span>
+              with <Heart className="h-4 w-4 fill-destructive text-destructive inline animate-pulse" /> using
+              <a href="https://lovable.dev" target="_blank" rel="noopener noreferrer" className="font-semibold text-white hover:text-accent transition-colors">Lovable</a>
             </p>
           </div>
         </div>
