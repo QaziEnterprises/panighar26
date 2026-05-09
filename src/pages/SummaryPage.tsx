@@ -462,9 +462,75 @@ export default function SummaryPage() {
             </div>
           )}
 
+          {/* ═══════════════ DAILY BREAKDOWN ═══════════════ */}
+          <Section
+            id="daily"
+            title="Daily Breakdown"
+            icon={CalendarRange}
+            count={activeDays.length}
+            total={activeDays.reduce((s, d) => s + d.net, 0)}
+            accent="text-primary"
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border/50 bg-muted/20">
+                    <th className="py-2 px-3 text-left font-semibold text-muted-foreground">Date</th>
+                    <th className="py-2 px-3 text-left font-semibold text-muted-foreground">Day</th>
+                    <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Bills</th>
+                    <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Sales</th>
+                    <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Due</th>
+                    <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Expenses</th>
+                    <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Ledger +/-</th>
+                    <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Net</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dailyBreakdown.map((d, i) => {
+                    const empty = d.billCount === 0 && d.expenses === 0 && d.credits === 0 && d.debits === 0;
+                    return (
+                      <tr key={d.dayStr} className={cn("border-b border-border/30 hover:bg-muted/30 transition-colors",
+                        i % 2 !== 0 && "bg-muted/15", empty && "opacity-50")}>
+                        <td className="py-2 px-3 font-mono">{format(d.day, "MMM dd")}</td>
+                        <td className="py-2 px-3 text-muted-foreground">{format(d.day, "EEE")}</td>
+                        <td className="py-2 px-3 text-right">{d.billCount || "—"}</td>
+                        <td className="py-2 px-3 text-right text-green-600 font-semibold">{d.sales ? `Rs ${d.sales.toLocaleString()}` : "—"}</td>
+                        <td className="py-2 px-3 text-right text-amber-600">{d.due ? `Rs ${d.due.toLocaleString()}` : "—"}</td>
+                        <td className="py-2 px-3 text-right text-destructive">{d.expenses ? `Rs ${d.expenses.toLocaleString()}` : "—"}</td>
+                        <td className="py-2 px-3 text-right">
+                          {d.credits > 0 && <span className="text-green-600">+{d.credits.toLocaleString()}</span>}
+                          {d.credits > 0 && d.debits > 0 && <span className="mx-0.5 text-muted-foreground">/</span>}
+                          {d.debits > 0 && <span className="text-destructive">-{d.debits.toLocaleString()}</span>}
+                          {d.credits === 0 && d.debits === 0 && "—"}
+                        </td>
+                        <td className={cn("py-2 px-3 text-right font-bold", d.net >= 0 ? "text-foreground" : "text-destructive")}>
+                          {empty ? "—" : `Rs ${d.net.toLocaleString()}`}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-border bg-muted/30 font-bold">
+                    <td className="py-2 px-3" colSpan={2}>Month Total</td>
+                    <td className="py-2 px-3 text-right">{categorizedBills.length}</td>
+                    <td className="py-2 px-3 text-right text-green-600">Rs {dailyBreakdown.reduce((s, d) => s + d.sales, 0).toLocaleString()}</td>
+                    <td className="py-2 px-3 text-right text-amber-600">Rs {dailyBreakdown.reduce((s, d) => s + d.due, 0).toLocaleString()}</td>
+                    <td className="py-2 px-3 text-right text-destructive">Rs {totalExpenses.toLocaleString()}</td>
+                    <td className="py-2 px-3 text-right">
+                      <span className="text-green-600">+{ledgerCredits.toLocaleString()}</span>
+                      {ledgerDebits > 0 && <> / <span className="text-destructive">-{ledgerDebits.toLocaleString()}</span></>}
+                    </td>
+                    <td className={cn("py-2 px-3 text-right", netCash >= 0 ? "text-foreground" : "text-destructive")}>Rs {netCash.toLocaleString()}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </Section>
+
           {/* ═══════════════ BILL SECTIONS ═══════════════ */}
           <div className="space-y-2.5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-1">Transaction Breakdown</p>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-1">Transaction Breakdown (Whole Month)</p>
 
             {/* Cash Bills */}
             {billsByCategory.cash.length > 0 && (
