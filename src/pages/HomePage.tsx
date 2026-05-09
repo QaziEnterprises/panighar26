@@ -173,41 +173,99 @@ export default function HomePage() {
     window.scrollTo({ top, behavior: "smooth" });
   };
 
+  // Locked blue theme for the public home page — overrides user theme via cascading CSS vars.
+  const homeTheme: React.CSSProperties = {
+    ["--background" as any]: "0 0% 100%",
+    ["--foreground" as any]: "217 60% 12%",
+    ["--card" as any]: "0 0% 100%",
+    ["--card-foreground" as any]: "217 60% 12%",
+    ["--popover" as any]: "0 0% 100%",
+    ["--popover-foreground" as any]: "217 60% 12%",
+    ["--primary" as any]: "217 91% 50%",
+    ["--primary-foreground" as any]: "0 0% 100%",
+    ["--primary-glow" as any]: "210 100% 65%",
+    ["--secondary" as any]: "214 100% 97%",
+    ["--secondary-foreground" as any]: "217 70% 22%",
+    ["--muted" as any]: "214 60% 96%",
+    ["--muted-foreground" as any]: "217 20% 45%",
+    ["--accent" as any]: "199 95% 48%",
+    ["--accent-foreground" as any]: "0 0% 100%",
+    ["--success" as any]: "152 65% 40%",
+    ["--success-foreground" as any]: "0 0% 100%",
+    ["--border" as any]: "214 32% 91%",
+    ["--input" as any]: "214 32% 91%",
+    ["--ring" as any]: "217 91% 50%",
+    ["--chart-1" as any]: "217 91% 50%",
+    ["--chart-2" as any]: "199 95% 48%",
+    ["--chart-3" as any]: "210 100% 65%",
+    ["--chart-4" as any]: "224 76% 38%",
+    ["--chart-5" as any]: "190 90% 55%",
+    backgroundColor: "hsl(0 0% 100%)",
+    color: "hsl(217 60% 12%)",
+    colorScheme: "light",
+  };
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="qe-home min-h-screen bg-background text-foreground" style={homeTheme}>
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-md border-b border-border shadow-sm">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b border-white/40 shadow-[0_4px_30px_-10px_hsl(217_91%_30%/0.18)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
-          <button onClick={() => scrollTo("#hero")} className="flex items-center gap-2 font-bold text-lg sm:text-xl text-primary">
-            <span className="relative flex items-center justify-center h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-accent text-primary-foreground">
+          <button
+            onClick={() => scrollTo("#hero")}
+            className="flex items-center gap-2 font-bold text-lg sm:text-xl text-primary transition-all duration-300 hover:scale-[1.03] active:scale-95"
+          >
+            <span className="relative flex items-center justify-center h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-[0_6px_20px_-4px_hsl(217_91%_50%/0.55)] transition-transform duration-500 hover:rotate-[8deg]">
               <Droplets className="h-4 w-4 absolute -translate-x-[3px]" />
               <Sun className="h-4 w-4 absolute translate-x-[3px] translate-y-[1px]" />
             </span>
-            <span className="whitespace-nowrap">{BRAND}</span>
+            <span className="whitespace-nowrap bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
+              {BRAND}
+            </span>
           </button>
-          <div className="hidden md:flex items-center gap-5">
-            {NAV_LINKS.map((l) => (
-              <button key={l.href} onClick={() => scrollTo(l.href)} className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-                {l.label}
-              </button>
-            ))}
+
+          {/* Desktop nav — glass pill */}
+          <div className="hidden md:flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-full border border-white/50 bg-white/40 backdrop-blur-2xl px-1.5 py-1 shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.7),0_8px_24px_-12px_hsl(217_91%_30%/0.25)]">
+              {NAV_LINKS.map((l) => (
+                <button
+                  key={l.href}
+                  onClick={() => scrollTo(l.href)}
+                  className="relative px-3 py-1.5 rounded-full text-[13px] font-medium text-foreground/70 hover:text-primary transition-all duration-300 hover:bg-white/80 hover:shadow-[0_4px_14px_-4px_hsl(217_91%_50%/0.35)] hover:-translate-y-0.5 active:translate-y-0"
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
             <Link to="/login">
-              <Button size="sm">Dashboard Login</Button>
+              <Button
+                size="sm"
+                className="ml-1 rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-[0_6px_18px_-4px_hsl(217_91%_50%/0.55)] hover:shadow-[0_10px_28px_-6px_hsl(217_91%_50%/0.7)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300"
+              >
+                Dashboard Login
+              </Button>
             </Link>
           </div>
-          <button className="md:hidden p-2" onClick={() => setMobileMenu(!mobileMenu)}>
-            {mobileMenu ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+
+          <button
+            className="md:hidden p-2 rounded-full bg-white/60 backdrop-blur-xl border border-white/50 transition-all duration-300 hover:bg-white/90 hover:scale-105"
+            onClick={() => setMobileMenu(!mobileMenu)}
+          >
+            {mobileMenu ? <X className="h-5 w-5 text-primary" /> : <Menu className="h-5 w-5 text-primary" />}
           </button>
         </div>
         {mobileMenu && (
-          <div className="md:hidden bg-card border-t border-border px-4 py-4 space-y-3 max-h-[80vh] overflow-y-auto">
+          <div className="md:hidden bg-white/90 backdrop-blur-xl border-t border-white/50 px-4 py-4 space-y-2 max-h-[80vh] overflow-y-auto animate-fade-in">
             {NAV_LINKS.map((l) => (
-              <button key={l.href} onClick={() => scrollTo(l.href)} className="block w-full text-left text-sm font-medium text-muted-foreground hover:text-primary">
+              <button
+                key={l.href}
+                onClick={() => scrollTo(l.href)}
+                className="block w-full text-left text-sm font-medium text-foreground/75 hover:text-primary px-3 py-2 rounded-lg hover:bg-primary/5 transition-all duration-200"
+              >
                 {l.label}
               </button>
             ))}
-            <Link to="/login" className="block">
-              <Button size="sm" className="w-full">Dashboard Login</Button>
+            <Link to="/login" className="block pt-1">
+              <Button size="sm" className="w-full rounded-full bg-gradient-to-r from-primary to-accent">Dashboard Login</Button>
             </Link>
           </div>
         )}
