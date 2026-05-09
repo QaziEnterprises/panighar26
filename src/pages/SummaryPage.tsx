@@ -131,23 +131,29 @@ const methodMeta = {
 
 // ── Component ──
 export default function SummaryPage() {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()));
   const [bills, setBills] = useState<SaleBill[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set(["daily"]));
 
-  const dateStr = format(selectedDate, "yyyy-MM-dd");
+  const monthStart = startOfMonth(selectedMonth);
+  const monthEnd = endOfMonth(selectedMonth);
+  const monthStartStr = format(monthStart, "yyyy-MM-dd");
+  const monthEndStr = format(monthEnd, "yyyy-MM-dd");
+  const monthLabel = format(selectedMonth, "MMMM yyyy");
+  const monthInputValue = format(selectedMonth, "yyyy-MM");
+
   const toggle = (k: string) => setCollapsed(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [salesRes, ledgerRes, expensesRes] = await Promise.all([
-        supabase.from("sale_transactions").select("id, invoice_no, total, paid_amount, payment_method, payment_status, customer_id, created_at").eq("date", dateStr),
-        supabase.from("ledger_entries").select("id, description, credit, debit, contact_id").eq("date", dateStr),
-        supabase.from("expenses").select("id, amount, description, payment_method, category_id").eq("date", dateStr),
+        supabase.from("sale_transactions").select("id, invoice_no, total, paid_amount, payment_method, payment_status, customer_id, created_at, date").gte("date", monthStartStr).lte("date", monthEndStr),
+        supabase.from("ledger_entries").select("id, description, credit, debit, contact_id, date").gte("date", monthStartStr).lte("date", monthEndStr),
+        supabase.from("expenses").select("id, amount, description, payment_method, category_id, date").gte("date", monthStartStr).lte("date", monthEndStr),
       ]);
       const customerIds = [...new Set((salesRes.data || []).map(s => s.customer_id).filter(Boolean))];
       const contactIds = [...new Set((ledgerRes.data || []).map(l => l.contact_id).filter(Boolean))];
@@ -166,22 +172,23 @@ export default function SummaryPage() {
       setBills((salesRes.data || []).map(s => ({
         id: s.id, invoice_no: s.invoice_no, total: Number(s.total || 0), paid_amount: Number(s.paid_amount || 0),
         payment_method: s.payment_method, payment_status: s.payment_status,
-        customer_name: s.customer_id ? contactMap[s.customer_id] || "Unknown" : "Walk-in", created_at: s.created_at,
+        customer_name: s.customer_id ? contactMap[s.customer_id] || "Unknown" : "Walk-in",
+        created_at: s.created_at, date: s.date,
       })));
       setLedgerEntries((ledgerRes.data || []).map(l => ({
         id: l.id, description: l.description, credit: Number(l.credit || 0), debit: Number(l.debit || 0),
-        contact_name: l.contact_id ? contactMap[l.contact_id] || "Unknown" : null,
+        contact_name: l.contact_id ? contactMap[l.contact_id] || "Unknown" : null, date: l.date,
       })));
       setExpenses((expensesRes.data || []).map(e => ({
         id: e.id, amount: Number(e.amount || 0), description: e.description,
-        payment_method: e.payment_method, category_name: e.category_id ? catMap[e.category_id] || null : null,
+        payment_method: e.payment_method, category_name: e.category_id ? catMap[e.category_id] || null : null, date: e.date,
       })));
     } catch {
       toast.error("Failed to load report data");
     } finally {
       setLoading(false);
     }
-  }, [dateStr]);
+  }, [monthStartStr, monthEndStr]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
