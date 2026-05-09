@@ -15,6 +15,18 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, role, signOut } = useAuth();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("sidebar-collapsed") === "1";
+  });
+  const toggleDesktop = () => {
+    setDesktopCollapsed((v) => {
+      const nv = !v;
+      try { localStorage.setItem("sidebar-collapsed", nv ? "1" : "0"); } catch {}
+      return nv;
+    });
+  };
+  const desktopWidth = desktopCollapsed ? "4rem" : "16rem";
   const { isOnline, queueLength, syncing, syncQueue, lastSyncedAt } = useOfflineSync();
 
   const allNavItems = [
