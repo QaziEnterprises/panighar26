@@ -330,23 +330,27 @@ export default function SummaryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-            <Receipt className="h-5 w-5 text-primary" />
-            Daily Cash Report
+            <CalendarRange className="h-5 w-5 text-primary" />
+            Monthly Report
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">{format(selectedDate, "EEEE, MMMM d, yyyy")}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{monthLabel} · {format(monthStart, "MMM d")} – {format(monthEnd, "MMM d, yyyy")}</p>
         </div>
         <div className="flex gap-1.5">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
-                <CalendarIcon className="h-3.5 w-3.5" />
-                {format(selectedDate, "MMM d")}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar mode="single" selected={selectedDate} onSelect={(d) => d && setSelectedDate(d)} initialFocus className="p-3 pointer-events-auto" />
-            </PopoverContent>
-          </Popover>
+          <label className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border bg-background text-xs font-medium cursor-pointer hover:bg-muted/40">
+            <CalendarIcon className="h-3.5 w-3.5" />
+            <input
+              type="month"
+              value={monthInputValue}
+              max={format(new Date(), "yyyy-MM")}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (!v) return;
+                const [y, m] = v.split("-").map(Number);
+                setSelectedMonth(startOfMonth(new Date(y, m - 1, 1)));
+              }}
+              className="bg-transparent outline-none border-0 text-xs"
+            />
+          </label>
           <Button size="sm" variant="outline" onClick={fetchData} disabled={loading} className="h-8 w-8 p-0">
             <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
           </Button>
