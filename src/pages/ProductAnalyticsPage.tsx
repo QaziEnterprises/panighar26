@@ -91,7 +91,13 @@ export default function ProductAnalyticsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
+  // period values: "7" | "30" | "90" | "365" | "month" (uses selectedMonth)
   const [period, setPeriod] = useState("30");
+  // YYYY-MM string for month filter
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [search, setSearch] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("totalQty");
@@ -100,22 +106,40 @@ export default function ProductAnalyticsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [period]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period, selectedMonth]);
+
+  // Compute date range based on current period selection
+  const dateRange = useMemo(() => {
+    if (period === "month") {
+      const [y, m] = selectedMonth.split("-").map(Number);
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 0); // last day of month
+      const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const days = end.getDate();
+      return { from: fmt(start), to: fmt(end), days, label: start.toLocaleDateString("en-PK", { month: "long", year: "numeric" }) };
+    }
+    const days = Number(period);
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+    const fmt = (d: Date) => d.toISOString().split("T")[0];
+    return { from: fmt(start), to: fmt(end), days, label: `Last ${days} Days` };
+  }, [period, selectedMonth]);
 
   const fetchData = async () => {
     setLoading(true);
     setAnalyticsError(null);
     try {
-      const daysAgo = new Date();
-      daysAgo.setDate(daysAgo.getDate() - Number(period));
-      const dateStr = daysAgo.toISOString().split("T")[0];
+      const salesQuery = supabase
+        .from("sale_transactions")
+        .select("id, invoice_no, date, customer_id, subtotal, discount, total, paid_amount, payment_method, payment_status, notes, created_at")
+        .gte("date", dateRange.from)
+        .lte("date", dateRange.to)
+        .order("date", { ascending: false });
 
       const [salesRes, productsRes, contactsRes] = await Promise.all([
-        supabase
-          .from("sale_transactions")
-          .select("id, invoice_no, date, customer_id, subtotal, discount, total, paid_amount, payment_method, payment_status, notes, created_at")
-          .gte("date", dateStr)
-          .order("date", { ascending: false }),
+        salesQuery,
         supabase.from("products").select("id, name, selling_price, quantity, sku"),
         supabase.from("contacts").select("id, name, type, phone"),
       ]);
@@ -172,7 +196,7 @@ export default function ProductAnalyticsPage() {
     }
   };
 
-  const daysInPeriod = Number(period);
+  const daysInPeriod = dateRange.days;
 
   // ─── Core: Observe bills → build product analysis ────────────────
   const productAnalysis = useMemo(() => {
