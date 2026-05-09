@@ -563,12 +563,151 @@ export default function ProductAnalyticsPage() {
       <Tabs defaultValue="ranking" className="space-y-4">
         <TabsList className="flex flex-wrap h-auto gap-1 p-1">
           <TabsTrigger value="ranking">📊 Most Selling (Ranked)</TabsTrigger>
+          <TabsTrigger value="monthly">📅 Monthly Breakdown</TabsTrigger>
           <TabsTrigger value="fast">🔥 Fast Sellers</TabsTrigger>
           <TabsTrigger value="slow">🐢 Slow / Dead</TabsTrigger>
           <TabsTrigger value="bills">📈 Bill Trends</TabsTrigger>
           <TabsTrigger value="detail">🔍 Product Detail</TabsTrigger>
           <TabsTrigger value="report">📋 Products Report</TabsTrigger>
         </TabsList>
+
+        {/* ═══ Monthly Breakdown Tab ═══ */}
+        <TabsContent value="monthly" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" /> Month-wise Sales Trend
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Switch the period to <strong>Last Year</strong> for a 12-month view, or pick a specific month above for daily detail.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {monthlyBreakdown.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No bills in this period</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <ComposedChart data={monthlyBreakdown}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis yAxisId="left" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                    <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, color: "hsl(var(--foreground))" }} />
+                    <Bar yAxisId="left" dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Revenue (Rs.)" />
+                    <Line yAxisId="right" type="monotone" dataKey="bills" stroke="hsl(var(--accent))" strokeWidth={2} dot name="Bills" />
+                    <Line yAxisId="right" type="monotone" dataKey="qty" stroke="hsl(var(--chart-3))" strokeWidth={2} dot name="Items Sold" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" /> Monthly Summary Table
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {monthlyBreakdown.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No data to display</p>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Month</th>
+                        <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Bills</th>
+                        <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Revenue</th>
+                        <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Avg / Bill</th>
+                        <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Items</th>
+                        <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Units Sold</th>
+                        <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Unique Customers</th>
+                        <th className="px-4 py-3 text-center font-semibold text-muted-foreground">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monthlyBreakdown.map((m) => (
+                        <tr key={m.month} className="border-t border-border hover:bg-muted/30">
+                          <td className="px-4 py-3 font-medium text-foreground">{m.label}</td>
+                          <td className="px-4 py-3 text-right text-primary font-semibold">{m.bills.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right text-accent font-bold">{formatPKR(m.revenue)}</td>
+                          <td className="px-4 py-3 text-right text-muted-foreground">{formatPKR(m.avgBill)}</td>
+                          <td className="px-4 py-3 text-right">{m.items.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right">{m.qty.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right">{m.uniqueCustomers}</td>
+                          <td className="px-4 py-3 text-center">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => { setPeriod("month"); setSelectedMonth(m.month); }}
+                            >
+                              <Eye className="h-3 w-3 mr-1" /> Drill in
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-muted/30 font-bold">
+                      <tr>
+                        <td className="px-4 py-3">Total ({monthlyBreakdown.length} months)</td>
+                        <td className="px-4 py-3 text-right">{monthlyBreakdown.reduce((s, m) => s + m.bills, 0).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right text-accent">{formatPKR(monthlyBreakdown.reduce((s, m) => s + m.revenue, 0))}</td>
+                        <td className="px-4 py-3 text-right">—</td>
+                        <td className="px-4 py-3 text-right">{monthlyBreakdown.reduce((s, m) => s + m.items, 0).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right">{monthlyBreakdown.reduce((s, m) => s + m.qty, 0).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right">—</td>
+                        <td className="px-4 py-3"></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {period === "month" && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-success" /> Top Products in {dateRange.label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {monthlyTopProducts.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No products sold in {dateRange.label}</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Rank</th>
+                          <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Product</th>
+                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Units Sold</th>
+                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Revenue</th>
+                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Bills</th>
+                          <th className="px-4 py-3 text-center font-semibold text-muted-foreground">Speed</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {monthlyTopProducts.map((p, i) => (
+                          <tr key={p.product_id} className="border-t border-border hover:bg-muted/30">
+                            <td className="px-4 py-3 font-bold">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}</td>
+                            <td className="px-4 py-3 font-medium text-foreground">{p.product_name}</td>
+                            <td className="px-4 py-3 text-right font-bold">{p.totalQty.toLocaleString()}</td>
+                            <td className="px-4 py-3 text-right text-accent font-semibold">{formatPKR(p.totalRevenue)}</td>
+                            <td className="px-4 py-3 text-right text-muted-foreground">{p.orderCount}</td>
+                            <td className="px-4 py-3 text-center"><Badge variant="outline" className={speedBg(p.speedLabel)}>{p.speedLabel}</Badge></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
 
         {/* ═══ Most Selling Products - Ranked ═══ */}
         <TabsContent value="ranking" className="space-y-4">
