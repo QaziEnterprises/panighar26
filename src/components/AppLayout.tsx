@@ -65,16 +65,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </button>
         )}
       </div>
-        <div className="flex items-center gap-2">
-          <Package className="h-7 w-7 text-sidebar-primary" />
-          <span className="text-lg font-bold tracking-tight">Qazi Enterprises</span>
-        </div>
-        {isMobile && (
-          <button onClick={() => setSidebarOpen(false)} className="text-sidebar-muted hover:text-sidebar-foreground">
-            <X className="h-5 w-5" />
-          </button>
-        )}
-      </div>
       <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
         {navItems.map((item) => {
           const active = location.pathname === item.to;
