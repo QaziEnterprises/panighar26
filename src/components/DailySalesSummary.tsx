@@ -67,15 +67,15 @@ export default function DailySalesSummary() {
     setLoading(true);
     try {
       const todayStr = getTodayStr();
-      const [{ data: sales }, { data: purchases }, { data: expensesData }] = await Promise.all([
+      const [salesRes, purchasesRes, expensesRes] = await Promise.allSettled([
         retryQuery(() => supabase.from("sale_transactions").select("total, payment_method, payment_status").eq("date", todayStr)),
         retryQuery(() => supabase.from("purchases").select("total").eq("date", todayStr)),
         retryQuery(() => supabase.from("expenses").select("id, amount, description, payment_method, reference_no").eq("date", todayStr)),
       ]);
 
-      const allSales = (sales as any[]) || [];
-      const allPurchases = (purchases as any[]) || [];
-      const allExpenses = (expensesData as any[]) || [];
+      const allSales = (salesRes.status === "fulfilled" ? (salesRes.value as any)?.data : null) || [];
+      const allPurchases = (purchasesRes.status === "fulfilled" ? (purchasesRes.value as any)?.data : null) || [];
+      const allExpenses = (expensesRes.status === "fulfilled" ? (expensesRes.value as any)?.data : null) || [];
 
       // Store full expenses list
       setExpensesList(allExpenses.map((e: any) => ({
