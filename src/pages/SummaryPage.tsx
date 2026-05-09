@@ -1,10 +1,10 @@
 // @ts-nocheck
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isSameDay } from "date-fns";
 import {
   Calendar as CalendarIcon, Download, RefreshCw, Banknote, Smartphone,
   Building2, CreditCard, AlertCircle, SplitSquareHorizontal,
-  TrendingDown, Wallet, Receipt, BookOpen, ChevronDown, Minus
+  TrendingDown, Wallet, Receipt, BookOpen, ChevronDown, Minus, CalendarRange
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,7 @@ interface SaleBill {
   payment_status: string | null;
   customer_name: string | null;
   created_at: string;
+  date: string;
 }
 
 interface LedgerEntry {
@@ -33,6 +34,7 @@ interface LedgerEntry {
   credit: number;
   debit: number;
   contact_name: string | null;
+  date: string;
 }
 
 interface Expense {
@@ -41,6 +43,7 @@ interface Expense {
   description: string | null;
   payment_method: string | null;
   category_name: string | null;
+  date: string;
 }
 
 interface MethodTotals { cash: number; jazzcash: number; easypaisa: number; bank: number; }
@@ -131,23 +134,29 @@ const methodMeta = {
 
 // ── Component ──
 export default function SummaryPage() {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()));
   const [bills, setBills] = useState<SaleBill[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set(["daily"]));
 
-  const dateStr = format(selectedDate, "yyyy-MM-dd");
+  const monthStart = startOfMonth(selectedMonth);
+  const monthEnd = endOfMonth(selectedMonth);
+  const monthStartStr = format(monthStart, "yyyy-MM-dd");
+  const monthEndStr = format(monthEnd, "yyyy-MM-dd");
+  const monthLabel = format(selectedMonth, "MMMM yyyy");
+  const monthInputValue = format(selectedMonth, "yyyy-MM");
+
   const toggle = (k: string) => setCollapsed(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [salesRes, ledgerRes, expensesRes] = await Promise.all([
-        supabase.from("sale_transactions").select("id, invoice_no, total, paid_amount, payment_method, payment_status, customer_id, created_at").eq("date", dateStr),
-        supabase.from("ledger_entries").select("id, description, credit, debit, contact_id").eq("date", dateStr),
-        supabase.from("expenses").select("id, amount, description, payment_method, category_id").eq("date", dateStr),
+        supabase.from("sale_transactions").select("id, invoice_no, total, paid_amount, payment_method, payment_status, customer_id, created_at, date").gte("date", monthStartStr).lte("date", monthEndStr),
+        supabase.from("ledger_entries").select("id, description, credit, debit, contact_id, date").gte("date", monthStartStr).lte("date", monthEndStr),
+        supabase.from("expenses").select("id, amount, description, payment_method, category_id, date").gte("date", monthStartStr).lte("date", monthEndStr),
       ]);
       const customerIds = [...new Set((salesRes.data || []).map(s => s.customer_id).filter(Boolean))];
       const contactIds = [...new Set((ledgerRes.data || []).map(l => l.contact_id).filter(Boolean))];
@@ -166,22 +175,23 @@ export default function SummaryPage() {
       setBills((salesRes.data || []).map(s => ({
         id: s.id, invoice_no: s.invoice_no, total: Number(s.total || 0), paid_amount: Number(s.paid_amount || 0),
         payment_method: s.payment_method, payment_status: s.payment_status,
-        customer_name: s.customer_id ? contactMap[s.customer_id] || "Unknown" : "Walk-in", created_at: s.created_at,
+        customer_name: s.customer_id ? contactMap[s.customer_id] || "Unknown" : "Walk-in",
+        created_at: s.created_at, date: s.date,
       })));
       setLedgerEntries((ledgerRes.data || []).map(l => ({
         id: l.id, description: l.description, credit: Number(l.credit || 0), debit: Number(l.debit || 0),
-        contact_name: l.contact_id ? contactMap[l.contact_id] || "Unknown" : null,
+        contact_name: l.contact_id ? contactMap[l.contact_id] || "Unknown" : null, date: l.date,
       })));
       setExpenses((expensesRes.data || []).map(e => ({
         id: e.id, amount: Number(e.amount || 0), description: e.description,
-        payment_method: e.payment_method, category_name: e.category_id ? catMap[e.category_id] || null : null,
+        payment_method: e.payment_method, category_name: e.category_id ? catMap[e.category_id] || null : null, date: e.date,
       })));
     } catch {
       toast.error("Failed to load report data");
     } finally {
       setLoading(false);
     }
-  }, [dateStr]);
+  }, [monthStartStr, monthEndStr]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -200,18 +210,50 @@ export default function SummaryPage() {
   const netCash = totalIncome - totalExpenses - ledgerDebits;
   const totalDue = useMemo(() => billsByCategory.due.reduce((s, b) => s + (b.total - b.paid_amount), 0), [billsByCategory.due]);
 
+  // ── Daily breakdown for the selected month ──
+  const dailyBreakdown = useMemo(() => {
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+    return days.map(day => {
+      const dayStr = format(day, "yyyy-MM-dd");
+      const dayBills = categorizedBills.filter(b => b.date === dayStr);
+      const dayExpenses = expenses.filter(e => e.date === dayStr);
+      const dayLedger = ledgerEntries.filter(l => l.date === dayStr);
+      const sales = dayBills.reduce((s, b) => s + Number(b.paid_amount || 0), 0);
+      const due = dayBills.reduce((s, b) => s + (Number(b.total) - Number(b.paid_amount)), 0);
+      const exp = dayExpenses.reduce((s, e) => s + e.amount, 0);
+      const credits = dayLedger.reduce((s, l) => s + l.credit, 0);
+      const debits = dayLedger.reduce((s, l) => s + l.debit, 0);
+      const net = sales + credits - exp - debits;
+      return { day, dayStr, billCount: dayBills.length, sales, due, expenses: exp, credits, debits, net };
+    });
+  }, [categorizedBills, expenses, ledgerEntries, monthStart, monthEnd]);
+
+  const activeDays = useMemo(() => dailyBreakdown.filter(d => d.billCount > 0 || d.expenses > 0 || d.credits > 0 || d.debits > 0), [dailyBreakdown]);
+
   // ── Export ──
   const exportExcel = () => {
-    const rows = categorizedBills.map(b => ({
-      Invoice: b.invoice_no || "-", Customer: b.customer_name || "-", Total: b.total,
+    const wb = XLSX.utils.book_new();
+
+    const dailyRows = dailyBreakdown.map(d => ({
+      Date: d.dayStr, Day: format(d.day, "EEE"), Bills: d.billCount,
+      Sales: d.sales, Due: d.due, Expenses: d.expenses,
+      "Ledger Credits": d.credits, "Ledger Debits": d.debits, Net: d.net,
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dailyRows), "Daily Breakdown");
+
+    const billRows = categorizedBills.map(b => ({
+      Date: b.date, Invoice: b.invoice_no || "-", Customer: b.customer_name || "-", Total: b.total,
       Paid: b.paid_amount, Method: b.payment_method || "-", Status: b.payment_status || "paid", Category: b.category,
     }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Daily Report");
-    const expRows = expenses.map(e => ({ Description: e.description || "-", Amount: e.amount, Category: e.category_name || "-", Method: e.payment_method || "-" }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(billRows), "All Bills");
+
+    const expRows = expenses.map(e => ({ Date: e.date, Description: e.description || "-", Amount: e.amount, Category: e.category_name || "-", Method: e.payment_method || "-" }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expRows), "Expenses");
-    XLSX.writeFile(wb, `daily_report_${dateStr}.xlsx`);
+
+    const ledgerRows = ledgerEntries.map(l => ({ Date: l.date, Description: l.description, Contact: l.contact_name || "-", Credit: l.credit, Debit: l.debit }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ledgerRows), "Ledger");
+
+    XLSX.writeFile(wb, `monthly_report_${monthInputValue}.xlsx`);
     toast.success("Exported to Excel");
   };
 
@@ -228,7 +270,7 @@ export default function SummaryPage() {
             <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Paid</th>
             {showDue && <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Due</th>}
             {showBreakdown && <th className="py-2 px-3 text-left font-semibold text-muted-foreground">Split Detail</th>}
-            <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Time</th>
+            <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Date</th>
           </tr>
         </thead>
         <tbody>
@@ -251,7 +293,7 @@ export default function SummaryPage() {
                   </div>
                 </td>
               )}
-              <td className="py-2 px-3 text-right text-muted-foreground">{format(new Date(b.created_at), "hh:mm a")}</td>
+              <td className="py-2 px-3 text-right text-muted-foreground font-mono">{b.date ? format(parseISO(b.date), "MMM dd") : format(new Date(b.created_at), "MMM dd")}</td>
             </tr>
           ))}
         </tbody>
@@ -288,23 +330,27 @@ export default function SummaryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-            <Receipt className="h-5 w-5 text-primary" />
-            Daily Cash Report
+            <CalendarRange className="h-5 w-5 text-primary" />
+            Monthly Report
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">{format(selectedDate, "EEEE, MMMM d, yyyy")}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{monthLabel} · {format(monthStart, "MMM d")} – {format(monthEnd, "MMM d, yyyy")}</p>
         </div>
         <div className="flex gap-1.5">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
-                <CalendarIcon className="h-3.5 w-3.5" />
-                {format(selectedDate, "MMM d")}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar mode="single" selected={selectedDate} onSelect={(d) => d && setSelectedDate(d)} initialFocus className="p-3 pointer-events-auto" />
-            </PopoverContent>
-          </Popover>
+          <label className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border bg-background text-xs font-medium cursor-pointer hover:bg-muted/40">
+            <CalendarIcon className="h-3.5 w-3.5" />
+            <input
+              type="month"
+              value={monthInputValue}
+              max={format(new Date(), "yyyy-MM")}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (!v) return;
+                const [y, m] = v.split("-").map(Number);
+                setSelectedMonth(startOfMonth(new Date(y, m - 1, 1)));
+              }}
+              className="bg-transparent outline-none border-0 text-xs"
+            />
+          </label>
           <Button size="sm" variant="outline" onClick={fetchData} disabled={loading} className="h-8 w-8 p-0">
             <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
           </Button>
@@ -322,7 +368,7 @@ export default function SummaryPage() {
       ) : bills.length === 0 && expenses.length === 0 && ledgerEntries.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed p-16 text-center">
           <Receipt className="mx-auto h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground text-sm">No transactions on {format(selectedDate, "MMMM d, yyyy")}</p>
+          <p className="mt-3 text-muted-foreground text-sm">No transactions in {monthLabel}</p>
         </div>
       ) : (
         <>
@@ -416,9 +462,75 @@ export default function SummaryPage() {
             </div>
           )}
 
+          {/* ═══════════════ DAILY BREAKDOWN ═══════════════ */}
+          <Section
+            id="daily"
+            title="Daily Breakdown"
+            icon={CalendarRange}
+            count={activeDays.length}
+            total={activeDays.reduce((s, d) => s + d.net, 0)}
+            accent="text-primary"
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border/50 bg-muted/20">
+                    <th className="py-2 px-3 text-left font-semibold text-muted-foreground">Date</th>
+                    <th className="py-2 px-3 text-left font-semibold text-muted-foreground">Day</th>
+                    <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Bills</th>
+                    <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Sales</th>
+                    <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Due</th>
+                    <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Expenses</th>
+                    <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Ledger +/-</th>
+                    <th className="py-2 px-3 text-right font-semibold text-muted-foreground">Net</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dailyBreakdown.map((d, i) => {
+                    const empty = d.billCount === 0 && d.expenses === 0 && d.credits === 0 && d.debits === 0;
+                    return (
+                      <tr key={d.dayStr} className={cn("border-b border-border/30 hover:bg-muted/30 transition-colors",
+                        i % 2 !== 0 && "bg-muted/15", empty && "opacity-50")}>
+                        <td className="py-2 px-3 font-mono">{format(d.day, "MMM dd")}</td>
+                        <td className="py-2 px-3 text-muted-foreground">{format(d.day, "EEE")}</td>
+                        <td className="py-2 px-3 text-right">{d.billCount || "—"}</td>
+                        <td className="py-2 px-3 text-right text-green-600 font-semibold">{d.sales ? `Rs ${d.sales.toLocaleString()}` : "—"}</td>
+                        <td className="py-2 px-3 text-right text-amber-600">{d.due ? `Rs ${d.due.toLocaleString()}` : "—"}</td>
+                        <td className="py-2 px-3 text-right text-destructive">{d.expenses ? `Rs ${d.expenses.toLocaleString()}` : "—"}</td>
+                        <td className="py-2 px-3 text-right">
+                          {d.credits > 0 && <span className="text-green-600">+{d.credits.toLocaleString()}</span>}
+                          {d.credits > 0 && d.debits > 0 && <span className="mx-0.5 text-muted-foreground">/</span>}
+                          {d.debits > 0 && <span className="text-destructive">-{d.debits.toLocaleString()}</span>}
+                          {d.credits === 0 && d.debits === 0 && "—"}
+                        </td>
+                        <td className={cn("py-2 px-3 text-right font-bold", d.net >= 0 ? "text-foreground" : "text-destructive")}>
+                          {empty ? "—" : `Rs ${d.net.toLocaleString()}`}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-border bg-muted/30 font-bold">
+                    <td className="py-2 px-3" colSpan={2}>Month Total</td>
+                    <td className="py-2 px-3 text-right">{categorizedBills.length}</td>
+                    <td className="py-2 px-3 text-right text-green-600">Rs {dailyBreakdown.reduce((s, d) => s + d.sales, 0).toLocaleString()}</td>
+                    <td className="py-2 px-3 text-right text-amber-600">Rs {dailyBreakdown.reduce((s, d) => s + d.due, 0).toLocaleString()}</td>
+                    <td className="py-2 px-3 text-right text-destructive">Rs {totalExpenses.toLocaleString()}</td>
+                    <td className="py-2 px-3 text-right">
+                      <span className="text-green-600">+{ledgerCredits.toLocaleString()}</span>
+                      {ledgerDebits > 0 && <> / <span className="text-destructive">-{ledgerDebits.toLocaleString()}</span></>}
+                    </td>
+                    <td className={cn("py-2 px-3 text-right", netCash >= 0 ? "text-foreground" : "text-destructive")}>Rs {netCash.toLocaleString()}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </Section>
+
           {/* ═══════════════ BILL SECTIONS ═══════════════ */}
           <div className="space-y-2.5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-1">Transaction Breakdown</p>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-1">Transaction Breakdown (Whole Month)</p>
 
             {/* Cash Bills */}
             {billsByCategory.cash.length > 0 && (
