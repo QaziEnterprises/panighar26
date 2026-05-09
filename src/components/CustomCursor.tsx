@@ -10,10 +10,10 @@ function getCursorStyle(): CursorStyle {
     const raw = localStorage.getItem("app_settings");
     if (raw) {
       const parsed = JSON.parse(raw);
-      return (parsed.cursorStyle as CursorStyle) || "neon-glow";
+      return (parsed.cursorStyle as CursorStyle) || "simple-dot";
     }
   } catch {}
-  return "neon-glow";
+  return "simple-dot";
 }
 
 export default function CustomCursor() {
