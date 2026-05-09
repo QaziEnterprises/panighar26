@@ -123,8 +123,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
         )}
         <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background px-4" style={!isOnline ? { top: 36 } : undefined}>
-          {isMobile && (
-            <button onClick={() => setSidebarOpen(true)}><Menu className="h-5 w-5" /></button>
+          {isMobile ? (
+            <button onClick={() => setSidebarOpen(true)} aria-label="Open menu"><Menu className="h-5 w-5" /></button>
+          ) : (
+            <button onClick={toggleDesktop} aria-label="Toggle sidebar" className="text-muted-foreground hover:text-foreground">
+              <Menu className="h-5 w-5" />
+            </button>
           )}
           <span className="font-semibold flex-1">{isMobile ? "Qazi Enterprises" : ""}</span>
           <div className="flex items-center gap-1.5">
