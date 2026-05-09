@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -172,6 +172,26 @@ export default function HomePage() {
     const top = el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET;
     window.scrollTo({ top, behavior: "smooth" });
   };
+
+  // Scroll-reveal: add `.is-visible` to sections + [data-reveal] elements when they enter the viewport
+  useEffect(() => {
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) return;
+    const targets = document.querySelectorAll<HTMLElement>(".qe-home section, .qe-home [data-reveal]");
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("is-visible");
+            io.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+    );
+    targets.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
 
   // Locked blue theme for the public home page — overrides user theme via cascading CSS vars.
   const homeTheme: React.CSSProperties = {
