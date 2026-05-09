@@ -467,20 +467,31 @@ export default function ProductAnalyticsPage() {
               <BarChart3 className="h-6 w-6 text-primary" /> Product Analytics
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Observing {sales.length} bills — sorted by most selling products
+              Observing {sales.length} bills · {dateRange.label} ({dateRange.from} → {dateRange.to})
             </p>
           </div>
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Last 7 Days</SelectItem>
-              <SelectItem value="30">Last 30 Days</SelectItem>
-              <SelectItem value="90">Last 90 Days</SelectItem>
-              <SelectItem value="365">Last Year</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">Last 7 Days</SelectItem>
+                <SelectItem value="30">Last 30 Days</SelectItem>
+                <SelectItem value="90">Last 90 Days</SelectItem>
+                <SelectItem value="365">Last Year</SelectItem>
+                <SelectItem value="month">📅 Specific Month</SelectItem>
+              </SelectContent>
+            </Select>
+            {period === "month" && (
+              <Input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-[170px]"
+              />
+            )}
+          </div>
         </div>
 
         {/* Prominent Search Bar */}
