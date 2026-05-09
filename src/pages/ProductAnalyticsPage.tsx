@@ -341,6 +341,46 @@ export default function ProductAnalyticsPage() {
     return Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [sales, saleItems]);
 
+  // Monthly aggregation across selected period — bills, revenue, items, unique customers
+  const monthlyBreakdown = useMemo(() => {
+    const saleDateMap = new Map<string, string>();
+    for (const s of sales) saleDateMap.set(s.id, s.date);
+    const monthMap = new Map<string, { month: string; label: string; bills: number; revenue: number; items: number; qty: number; customers: Set<string> }>();
+    for (const s of sales) {
+      if (!s.date) continue;
+      const month = s.date.slice(0, 7); // YYYY-MM
+      let entry = monthMap.get(month);
+      if (!entry) {
+        const [y, m] = month.split("-").map(Number);
+        const label = new Date(y, m - 1, 1).toLocaleDateString("en-PK", { month: "short", year: "numeric" });
+        entry = { month, label, bills: 0, revenue: 0, items: 0, qty: 0, customers: new Set() };
+        monthMap.set(month, entry);
+      }
+      entry.bills++;
+      entry.revenue += Number(s.total || 0);
+      if (s.customer_id) entry.customers.add(s.customer_id);
+    }
+    for (const item of saleItems) {
+      const date = saleDateMap.get(item.sale_id);
+      if (!date) continue;
+      const month = date.slice(0, 7);
+      const entry = monthMap.get(month);
+      if (entry) {
+        entry.items++;
+        entry.qty += Number(item.quantity || 0);
+      }
+    }
+    return Array.from(monthMap.values())
+      .map((e) => ({ month: e.month, label: e.label, bills: e.bills, revenue: e.revenue, items: e.items, qty: e.qty, uniqueCustomers: e.customers.size, avgBill: e.bills > 0 ? Math.round(e.revenue / e.bills) : 0 }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+  }, [sales, saleItems]);
+
+  // Top products of currently selected month (period === "month") — month-wise product ranking
+  const monthlyTopProducts = useMemo(() => {
+    return productAnalysis.slice(0, 25);
+  }, [productAnalysis]);
+
+
   // Top customers from bills
   const topCustomers = useMemo(() => {
     const customerMap = new Map<string, string>();
