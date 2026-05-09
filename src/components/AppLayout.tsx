@@ -15,6 +15,18 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, role, signOut } = useAuth();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("sidebar-collapsed") === "1";
+  });
+  const toggleDesktop = () => {
+    setDesktopCollapsed((v) => {
+      const nv = !v;
+      try { localStorage.setItem("sidebar-collapsed", nv ? "1" : "0"); } catch {}
+      return nv;
+    });
+  };
+  const desktopWidth = desktopCollapsed ? "4rem" : "16rem";
   const { isOnline, queueLength, syncing, syncQueue, lastSyncedAt } = useOfflineSync();
 
   const allNavItems = [
@@ -39,13 +51,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   const sidebar = (
     <aside className={cn(
-      "fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar text-sidebar-foreground transition-transform",
+      "fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar text-sidebar-foreground transition-all duration-200",
       isMobile && !sidebarOpen && "-translate-x-full"
-    )} style={{ width: 'var(--sidebar-width, 16rem)' }}>
-      <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-6">
-        <div className="flex items-center gap-2">
-          <Package className="h-7 w-7 text-sidebar-primary" />
-          <span className="text-lg font-bold tracking-tight">Qazi Enterprises</span>
+    )} style={{ width: isMobile ? '16rem' : desktopWidth }}>
+      <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <Package className="h-7 w-7 text-sidebar-primary shrink-0" />
+          {!desktopCollapsed && <span className="text-lg font-bold tracking-tight whitespace-nowrap">Qazi Enterprises</span>}
         </div>
         {isMobile && (
           <button onClick={() => setSidebarOpen(false)} className="text-sidebar-muted hover:text-sidebar-foreground">
@@ -60,29 +72,35 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <Link
               key={item.to}
               to={item.to}
+              title={desktopCollapsed ? item.label : undefined}
               onClick={() => isMobile && setSidebarOpen(false)}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                desktopCollapsed && !isMobile && "justify-center px-2",
                 active
                   ? "bg-sidebar-accent text-sidebar-primary"
                   : "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               )}
             >
-              <item.icon className="h-4 w-4" />
-              {item.label}
+              <item.icon className="h-4 w-4 shrink-0" />
+              {(!desktopCollapsed || isMobile) && <span>{item.label}</span>}
             </Link>
           );
         })}
       </nav>
       <div className="border-t border-sidebar-border p-4">
-        <p className="text-xs text-sidebar-muted mb-2 truncate">{user?.email}</p>
+        {(!desktopCollapsed || isMobile) && <p className="text-xs text-sidebar-muted mb-2 truncate">{user?.email}</p>}
         <Button
           variant="ghost"
           size="sm"
           onClick={signOut}
-          className="w-full justify-start gap-2 text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent"
+          title="Sign Out"
+          className={cn(
+            "w-full gap-2 text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent",
+            desktopCollapsed && !isMobile ? "justify-center" : "justify-start"
+          )}
         >
-          <LogOut className="h-4 w-4" /> Sign Out
+          <LogOut className="h-4 w-4" /> {(!desktopCollapsed || isMobile) && "Sign Out"}
         </Button>
       </div>
     </aside>
@@ -92,7 +110,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen">
       {isMobile && sidebarOpen && <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setSidebarOpen(false)} />}
       {sidebar}
-      <main className="flex-1" style={!isMobile ? { paddingLeft: 'var(--sidebar-width, 16rem)' } : undefined}>
+      <main className="flex-1 transition-all duration-200" style={!isMobile ? { paddingLeft: desktopWidth } : undefined}>
         {!isOnline && (
           <div className="sticky top-0 z-40 flex items-center justify-center gap-2 bg-destructive px-4 py-2 text-destructive-foreground text-sm font-medium">
             <WifiOff className="h-4 w-4" />
@@ -105,8 +123,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
         )}
         <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background px-4" style={!isOnline ? { top: 36 } : undefined}>
-          {isMobile && (
-            <button onClick={() => setSidebarOpen(true)}><Menu className="h-5 w-5" /></button>
+          {isMobile ? (
+            <button onClick={() => setSidebarOpen(true)} aria-label="Open menu"><Menu className="h-5 w-5" /></button>
+          ) : (
+            <button onClick={toggleDesktop} aria-label="Toggle sidebar" className="text-muted-foreground hover:text-foreground">
+              <Menu className="h-5 w-5" />
+            </button>
           )}
           <span className="font-semibold flex-1">{isMobile ? "Qazi Enterprises" : ""}</span>
           <div className="flex items-center gap-1.5">
