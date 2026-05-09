@@ -742,7 +742,7 @@ export default function ProductAnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={filteredProducts.slice(0, 10)} layout="vertical" margin={{ left: 100 }}>
+                  <BarChart data={[...filteredProducts].sort((a, b) => b.totalQty - a.totalQty).slice(0, 10)} layout="vertical" margin={{ left: 100 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
                     <YAxis dataKey="product_name" type="category" tick={{ fill: "hsl(var(--foreground))", fontSize: 11 }} width={95} />
