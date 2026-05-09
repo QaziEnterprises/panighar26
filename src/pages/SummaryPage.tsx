@@ -368,7 +368,7 @@ export default function SummaryPage() {
       ) : bills.length === 0 && expenses.length === 0 && ledgerEntries.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed p-16 text-center">
           <Receipt className="mx-auto h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground text-sm">No transactions on {format(selectedDate, "MMMM d, yyyy")}</p>
+          <p className="mt-3 text-muted-foreground text-sm">No transactions in {monthLabel}</p>
         </div>
       ) : (
         <>
