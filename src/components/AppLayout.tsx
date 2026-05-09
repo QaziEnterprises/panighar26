@@ -82,29 +82,35 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <Link
               key={item.to}
               to={item.to}
+              title={desktopCollapsed ? item.label : undefined}
               onClick={() => isMobile && setSidebarOpen(false)}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                desktopCollapsed && !isMobile && "justify-center px-2",
                 active
                   ? "bg-sidebar-accent text-sidebar-primary"
                   : "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               )}
             >
-              <item.icon className="h-4 w-4" />
-              {item.label}
+              <item.icon className="h-4 w-4 shrink-0" />
+              {(!desktopCollapsed || isMobile) && <span>{item.label}</span>}
             </Link>
           );
         })}
       </nav>
       <div className="border-t border-sidebar-border p-4">
-        <p className="text-xs text-sidebar-muted mb-2 truncate">{user?.email}</p>
+        {(!desktopCollapsed || isMobile) && <p className="text-xs text-sidebar-muted mb-2 truncate">{user?.email}</p>}
         <Button
           variant="ghost"
           size="sm"
           onClick={signOut}
-          className="w-full justify-start gap-2 text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent"
+          title="Sign Out"
+          className={cn(
+            "w-full gap-2 text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent",
+            desktopCollapsed && !isMobile ? "justify-center" : "justify-start"
+          )}
         >
-          <LogOut className="h-4 w-4" /> Sign Out
+          <LogOut className="h-4 w-4" /> {(!desktopCollapsed || isMobile) && "Sign Out"}
         </Button>
       </div>
     </aside>
