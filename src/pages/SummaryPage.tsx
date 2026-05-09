@@ -210,18 +210,50 @@ export default function SummaryPage() {
   const netCash = totalIncome - totalExpenses - ledgerDebits;
   const totalDue = useMemo(() => billsByCategory.due.reduce((s, b) => s + (b.total - b.paid_amount), 0), [billsByCategory.due]);
 
+  // ── Daily breakdown for the selected month ──
+  const dailyBreakdown = useMemo(() => {
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+    return days.map(day => {
+      const dayStr = format(day, "yyyy-MM-dd");
+      const dayBills = categorizedBills.filter(b => b.date === dayStr);
+      const dayExpenses = expenses.filter(e => e.date === dayStr);
+      const dayLedger = ledgerEntries.filter(l => l.date === dayStr);
+      const sales = dayBills.reduce((s, b) => s + Number(b.paid_amount || 0), 0);
+      const due = dayBills.reduce((s, b) => s + (Number(b.total) - Number(b.paid_amount)), 0);
+      const exp = dayExpenses.reduce((s, e) => s + e.amount, 0);
+      const credits = dayLedger.reduce((s, l) => s + l.credit, 0);
+      const debits = dayLedger.reduce((s, l) => s + l.debit, 0);
+      const net = sales + credits - exp - debits;
+      return { day, dayStr, billCount: dayBills.length, sales, due, expenses: exp, credits, debits, net };
+    });
+  }, [categorizedBills, expenses, ledgerEntries, monthStart, monthEnd]);
+
+  const activeDays = useMemo(() => dailyBreakdown.filter(d => d.billCount > 0 || d.expenses > 0 || d.credits > 0 || d.debits > 0), [dailyBreakdown]);
+
   // ── Export ──
   const exportExcel = () => {
-    const rows = categorizedBills.map(b => ({
-      Invoice: b.invoice_no || "-", Customer: b.customer_name || "-", Total: b.total,
+    const wb = XLSX.utils.book_new();
+
+    const dailyRows = dailyBreakdown.map(d => ({
+      Date: d.dayStr, Day: format(d.day, "EEE"), Bills: d.billCount,
+      Sales: d.sales, Due: d.due, Expenses: d.expenses,
+      "Ledger Credits": d.credits, "Ledger Debits": d.debits, Net: d.net,
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dailyRows), "Daily Breakdown");
+
+    const billRows = categorizedBills.map(b => ({
+      Date: b.date, Invoice: b.invoice_no || "-", Customer: b.customer_name || "-", Total: b.total,
       Paid: b.paid_amount, Method: b.payment_method || "-", Status: b.payment_status || "paid", Category: b.category,
     }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Daily Report");
-    const expRows = expenses.map(e => ({ Description: e.description || "-", Amount: e.amount, Category: e.category_name || "-", Method: e.payment_method || "-" }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(billRows), "All Bills");
+
+    const expRows = expenses.map(e => ({ Date: e.date, Description: e.description || "-", Amount: e.amount, Category: e.category_name || "-", Method: e.payment_method || "-" }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expRows), "Expenses");
-    XLSX.writeFile(wb, `daily_report_${dateStr}.xlsx`);
+
+    const ledgerRows = ledgerEntries.map(l => ({ Date: l.date, Description: l.description, Contact: l.contact_name || "-", Credit: l.credit, Debit: l.debit }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ledgerRows), "Ledger");
+
+    XLSX.writeFile(wb, `monthly_report_${monthInputValue}.xlsx`);
     toast.success("Exported to Excel");
   };
 
