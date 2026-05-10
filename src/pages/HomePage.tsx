@@ -119,7 +119,7 @@ const BENEFITS = [
   { icon: Zap, label: "Fast Delivery" },
   { icon: ShieldCheck, label: "Up to 25-Yr Warranty" },
   { icon: BadgePercent, label: "Wholesale Pricing" },
-  { icon: TrendingUp, label: "5+ Yrs Experience" },
+  { icon: TrendingUp, label: "20+ Yrs Experience" },
   { icon: Headphones, label: "24/7 Support" },
   { icon: Leaf, label: "Eco-Friendly" },
 ];
