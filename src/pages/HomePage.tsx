@@ -119,7 +119,7 @@ const BENEFITS = [
   { icon: Zap, label: "Fast Delivery" },
   { icon: ShieldCheck, label: "Up to 25-Yr Warranty" },
   { icon: BadgePercent, label: "Wholesale Pricing" },
-  { icon: TrendingUp, label: "5+ Yrs Experience" },
+  { icon: TrendingUp, label: "20+ Yrs Experience" },
   { icon: Headphones, label: "24/7 Support" },
   { icon: Leaf, label: "Eco-Friendly" },
 ];
@@ -196,7 +196,8 @@ export default function HomePage() {
   useEffect(() => {
     const style = document.createElement("style");
     style.setAttribute("data-qe-home-theme", "");
-    style.textContent = `:root{--background:0 0% 100%;--foreground:217 60% 12%;--card:0 0% 100%;--card-foreground:217 60% 12%;--popover:0 0% 100%;--popover-foreground:217 60% 12%;--primary:217 91% 50%;--primary-foreground:0 0% 100%;--primary-glow:210 100% 65%;--secondary:214 100% 97%;--secondary-foreground:217 70% 22%;--muted:214 60% 96%;--muted-foreground:217 20% 45%;--accent:199 95% 48%;--accent-foreground:0 0% 100%;--success:152 65% 40%;--success-foreground:0 0% 100%;--border:214 32% 91%;--input:214 32% 91%;--ring:217 91% 50%;--chart-1:217 91% 50%;--chart-2:199 95% 48%;--chart-3:210 100% 65%;--chart-4:224 76% 38%;--chart-5:190 90% 55%;}`;
+    const vars = `--background:0 0% 100% !important;--foreground:217 60% 12% !important;--card:0 0% 100% !important;--card-foreground:217 60% 12% !important;--popover:0 0% 100% !important;--popover-foreground:217 60% 12% !important;--primary:217 91% 50% !important;--primary-foreground:0 0% 100% !important;--primary-glow:210 100% 65% !important;--secondary:214 100% 97% !important;--secondary-foreground:217 70% 22% !important;--muted:214 60% 96% !important;--muted-foreground:217 20% 45% !important;--accent:199 95% 48% !important;--accent-foreground:0 0% 100% !important;--success:152 65% 40% !important;--success-foreground:0 0% 100% !important;--border:214 32% 91% !important;--input:214 32% 91% !important;--ring:217 91% 50% !important;--chart-1:217 91% 50% !important;--chart-2:199 95% 48% !important;--chart-3:210 100% 65% !important;--chart-4:224 76% 38% !important;--chart-5:190 90% 55% !important;`;
+    style.textContent = `:root,:root.dark,html,html.dark,body,body.dark,.dark{${vars}}`;
     document.head.appendChild(style);
     return () => { style.remove(); };
   }, []);
@@ -325,7 +326,7 @@ export default function HomePage() {
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
               </span>
               <Sparkles className="h-3.5 w-3.5 text-primary" />
-              <span className="text-foreground/80">Water Treatment + Solar Energy — Since 2019</span>
+              <span className="text-foreground/80">Water Treatment + Solar Energy — 20+ Years of Excellence (Since 2005)</span>
             </div>
 
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[5.25rem] font-bold leading-[1.02] tracking-[-0.04em] text-foreground">
@@ -884,7 +885,7 @@ export default function HomePage() {
                 <span className="bg-gradient-to-r from-white via-white to-white/70 bg-clip-text text-transparent">{BRAND}</span>
               </div>
               <p className="text-sm leading-relaxed text-white/70 max-w-md">
-                Water Treatment Technologies (domestic &amp; commercial) and Solar System Establishment — proudly serving Bahawalpur since 2019.
+                Water Treatment Technologies (domestic &amp; commercial) and Solar System Establishment — proudly serving Bahawalpur for over 20 years (since 2005).
               </p>
               <div className="flex items-center gap-2 pt-1">
                 {[
