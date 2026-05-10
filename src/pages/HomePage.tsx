@@ -885,7 +885,7 @@ export default function HomePage() {
                 <span className="bg-gradient-to-r from-white via-white to-white/70 bg-clip-text text-transparent">{BRAND}</span>
               </div>
               <p className="text-sm leading-relaxed text-white/70 max-w-md">
-                Water Treatment Technologies (domestic &amp; commercial) and Solar System Establishment — proudly serving Bahawalpur since 2019.
+                Water Treatment Technologies (domestic &amp; commercial) and Solar System Establishment — proudly serving Bahawalpur for over 20 years (since 2005).
               </p>
               <div className="flex items-center gap-2 pt-1">
                 {[
