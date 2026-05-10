@@ -326,7 +326,7 @@ export default function HomePage() {
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
               </span>
               <Sparkles className="h-3.5 w-3.5 text-primary" />
-              <span className="text-foreground/80">Water Treatment + Solar Energy — Since 2019</span>
+              <span className="text-foreground/80">Water Treatment + Solar Energy — 20+ Years of Excellence (Since 2005)</span>
             </div>
 
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[5.25rem] font-bold leading-[1.02] tracking-[-0.04em] text-foreground">
