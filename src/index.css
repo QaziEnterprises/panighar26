@@ -379,8 +379,25 @@
 }
 
 /* ============== Public Home Page (qe-home) — locked blue theme + motion ============== */
-.qe-home { color-scheme: light; }
+.qe-home { color-scheme: light; overflow-x: hidden; }
 .qe-home.dark, .dark .qe-home { color-scheme: light; }
+.qe-home img, .qe-home video, .qe-home canvas, .qe-home svg { max-width: 100%; height: auto; }
+.qe-home * { min-width: 0; }
+
+/* Responsive scale for very small phones */
+@media (max-width: 380px) {
+  .qe-home h1 { font-size: clamp(2rem, 9vw, 2.75rem) !important; line-height: 1.05 !important; }
+  .qe-home h2 { font-size: clamp(1.5rem, 6vw, 2rem) !important; }
+  .qe-home .max-w-7xl { padding-left: 1rem !important; padding-right: 1rem !important; }
+}
+/* Tablet tuning */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .qe-home h1 { font-size: clamp(3rem, 6.5vw, 4.5rem) !important; }
+}
+/* Ultrawide cap */
+@media (min-width: 1920px) {
+  .qe-home .max-w-7xl { max-width: 96rem; }
+}
 
 /* Smooth, attractive default transitions for interactive elements on the home page */
 .qe-home a,

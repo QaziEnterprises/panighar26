@@ -320,16 +320,16 @@ export default function HomePage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center gap-12">
           <div className="flex-1 space-y-7">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-border/60 bg-card/70 backdrop-blur-md text-xs font-semibold shadow-[var(--shadow-xs)]">
-              <span className="relative flex h-2 w-2">
+            <div className="inline-flex max-w-full items-center gap-2 px-3 py-1.5 rounded-full border border-border/60 bg-card/70 backdrop-blur-md text-[11px] sm:text-xs font-semibold shadow-[var(--shadow-xs)]">
+              <span className="relative flex h-2 w-2 shrink-0">
                 <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-75 animate-ping" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
               </span>
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              <span className="text-foreground/80">Water Treatment + Solar Energy — 20+ Years of Excellence (Since 2005)</span>
+              <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="text-foreground/80 truncate sm:whitespace-normal">Water Treatment + Solar — 20+ Years (Since 2005)</span>
             </div>
 
-            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[5.25rem] font-bold leading-[1.02] tracking-[-0.04em] text-foreground">
+            <h1 className="text-4xl xs:text-5xl sm:text-6xl md:text-7xl lg:text-[5.25rem] font-bold leading-[1.05] tracking-[-0.04em] text-foreground break-words">
               Pure Water,
               <br />
               <span className="text-gradient">Clean Energy.</span>
