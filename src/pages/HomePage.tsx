@@ -192,6 +192,14 @@ export default function HomePage() {
     return () => io.disconnect();
   }, []);
 
+  // Apply blue theme to :root while on home page so global elements (cursor, toasts, portals) match.
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.setAttribute("data-qe-home-theme", "");
+    style.textContent = `:root{--background:0 0% 100%;--foreground:217 60% 12%;--card:0 0% 100%;--card-foreground:217 60% 12%;--popover:0 0% 100%;--popover-foreground:217 60% 12%;--primary:217 91% 50%;--primary-foreground:0 0% 100%;--primary-glow:210 100% 65%;--secondary:214 100% 97%;--secondary-foreground:217 70% 22%;--muted:214 60% 96%;--muted-foreground:217 20% 45%;--accent:199 95% 48%;--accent-foreground:0 0% 100%;--success:152 65% 40%;--success-foreground:0 0% 100%;--border:214 32% 91%;--input:214 32% 91%;--ring:217 91% 50%;--chart-1:217 91% 50%;--chart-2:199 95% 48%;--chart-3:210 100% 65%;--chart-4:224 76% 38%;--chart-5:190 90% 55%;}`;
+    document.head.appendChild(style);
+    return () => { style.remove(); };
+  }, []);
 
   // Locked blue theme for the public home page — overrides user theme via cascading CSS vars.
   const homeTheme: React.CSSProperties = {
