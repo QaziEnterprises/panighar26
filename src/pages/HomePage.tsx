@@ -272,6 +272,14 @@ export default function HomePage() {
                 </button>
               ))}
             </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleGuest}
+              className="rounded-full border-primary/40 text-primary hover:bg-primary/10 hover:border-primary transition-all duration-300"
+            >
+              View as Guest
+            </Button>
             <Link to="/login">
               <Button
                 size="sm"
