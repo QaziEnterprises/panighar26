@@ -308,6 +308,9 @@ export default function HomePage() {
                 {l.label}
               </button>
             ))}
+            <Button size="sm" variant="outline" className="w-full rounded-full border-primary/40 text-primary mt-1" onClick={handleGuest}>
+              View Dashboard as Guest
+            </Button>
             <Link to="/login" className="block pt-1">
               <Button size="sm" className="w-full rounded-full bg-gradient-to-r from-primary to-accent">Dashboard Login</Button>
             </Link>
