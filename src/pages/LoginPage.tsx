@@ -22,7 +22,7 @@ async function clearServerAttempts(_email: string) { /* no-op */ }
 
 export default function LoginPage() {
   const savedEmail = (() => { if (typeof localStorage === 'undefined') return ''; try { return localStorage.getItem("remembered_email") || ''; } catch { return ''; } })();
-  const { signIn } = useAuth();
+  const { signIn, enterGuest } = useAuth();
   const [email, setEmail] = useState(savedEmail);
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(!!savedEmail);
