@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const { user, role, signOut } = useAuth();
+  const { user, role, signOut, isGuest, exitGuest } = useAuth();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(() => {
