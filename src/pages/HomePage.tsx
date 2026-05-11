@@ -164,6 +164,12 @@ const SOLAR_INCLUDES = [
 
 export default function HomePage() {
   const [mobileMenu, setMobileMenu] = useState(false);
+  const navigate = useNavigate();
+  const { enterGuest } = useAuth();
+  const handleGuest = () => {
+    enterGuest();
+    navigate("/dashboard");
+  };
 
   const scrollTo = (id: string) => {
     setMobileMenu(false);
