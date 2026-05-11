@@ -114,9 +114,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         {isGuest && (
           <div className="sticky top-0 z-40 flex flex-wrap items-center justify-center gap-2 bg-gradient-to-r from-primary to-accent px-4 py-2 text-primary-foreground text-xs sm:text-sm font-medium">
             <span>👁️ Guest Preview Mode — you're exploring the dashboard with demo access. Real data is hidden.</span>
-            <Link to="/login" onClick={exitGuest}>
-              <Button size="sm" variant="secondary" className="h-7 text-xs">Sign in for full access</Button>
-            </Link>
+            <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={() => { exitGuest(); window.location.href = "/login"; }}>
+              Sign in for full access
+            </Button>
             <Button size="sm" variant="ghost" className="h-7 text-xs text-primary-foreground hover:bg-white/20" onClick={() => { exitGuest(); window.location.href = "/"; }}>
               Exit
             </Button>
