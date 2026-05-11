@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const { user, role, signOut } = useAuth();
+  const { user, role, signOut, isGuest, exitGuest } = useAuth();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(() => {
@@ -111,8 +111,19 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       {isMobile && sidebarOpen && <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setSidebarOpen(false)} />}
       {sidebar}
       <main className="flex-1 transition-all duration-200" style={!isMobile ? { paddingLeft: desktopWidth } : undefined}>
+        {isGuest && (
+          <div className="sticky top-0 z-40 flex flex-wrap items-center justify-center gap-2 bg-gradient-to-r from-primary to-accent px-4 py-2 text-primary-foreground text-xs sm:text-sm font-medium">
+            <span>👁️ Guest Preview Mode — you're exploring the dashboard with demo access. Real data is hidden.</span>
+            <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={() => { exitGuest(); window.location.href = "/login"; }}>
+              Sign in for full access
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs text-primary-foreground hover:bg-white/20" onClick={() => { exitGuest(); window.location.href = "/"; }}>
+              Exit
+            </Button>
+          </div>
+        )}
         {!isOnline && (
-          <div className="sticky top-0 z-40 flex items-center justify-center gap-2 bg-destructive px-4 py-2 text-destructive-foreground text-sm font-medium">
+          <div className="sticky top-0 z-40 flex items-center justify-center gap-2 bg-destructive px-4 py-2 text-destructive-foreground text-sm font-medium" style={isGuest ? { top: 40 } : undefined}>
             <WifiOff className="h-4 w-4" />
             <span>You're offline — changes are being saved locally and will sync automatically when reconnected</span>
             {queueLength > 0 && (

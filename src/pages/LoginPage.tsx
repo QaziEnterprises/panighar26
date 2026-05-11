@@ -22,7 +22,7 @@ async function clearServerAttempts(_email: string) { /* no-op */ }
 
 export default function LoginPage() {
   const savedEmail = (() => { if (typeof localStorage === 'undefined') return ''; try { return localStorage.getItem("remembered_email") || ''; } catch { return ''; } })();
-  const { signIn } = useAuth();
+  const { signIn, enterGuest } = useAuth();
   const [email, setEmail] = useState(savedEmail);
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(!!savedEmail);
@@ -220,6 +220,18 @@ export default function LoginPage() {
             )}
             <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={loading || (!!lockoutEnd && Date.now() < lockoutEnd)}>
               {loading ? "Signing in..." : "Sign In"}
+            </Button>
+            <div className="relative my-2">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+              <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground">or</span></div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full border-primary/40 text-primary hover:bg-primary/10"
+              onClick={() => { enterGuest(); window.location.href = "/dashboard"; }}
+            >
+              Continue as Guest (Demo)
             </Button>
           </form>
         </CardContent>

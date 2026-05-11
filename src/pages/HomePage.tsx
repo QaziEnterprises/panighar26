@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -163,6 +164,12 @@ const SOLAR_INCLUDES = [
 
 export default function HomePage() {
   const [mobileMenu, setMobileMenu] = useState(false);
+  const navigate = useNavigate();
+  const { enterGuest } = useAuth();
+  const handleGuest = () => {
+    enterGuest();
+    navigate("/dashboard");
+  };
 
   const scrollTo = (id: string) => {
     setMobileMenu(false);
@@ -265,6 +272,14 @@ export default function HomePage() {
                 </button>
               ))}
             </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleGuest}
+              className="rounded-full border-primary/40 text-primary hover:bg-primary/10 hover:border-primary transition-all duration-300"
+            >
+              View as Guest
+            </Button>
             <Link to="/login">
               <Button
                 size="sm"
@@ -293,6 +308,9 @@ export default function HomePage() {
                 {l.label}
               </button>
             ))}
+            <Button size="sm" variant="outline" className="w-full rounded-full border-primary/40 text-primary mt-1" onClick={handleGuest}>
+              View Dashboard as Guest
+            </Button>
             <Link to="/login" className="block pt-1">
               <Button size="sm" className="w-full rounded-full bg-gradient-to-r from-primary to-accent">Dashboard Login</Button>
             </Link>

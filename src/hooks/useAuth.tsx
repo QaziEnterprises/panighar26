@@ -7,11 +7,24 @@ interface AuthContextType {
   user: User | null;
   role: "admin" | "user" | null;
   loading: boolean;
+  isGuest: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  enterGuest: () => void;
+  exitGuest: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const GUEST_KEY = "qe-guest-mode";
+const GUEST_USER = {
+  id: "guest-demo-user",
+  email: "guest@demo.local",
+  app_metadata: {},
+  user_metadata: { is_guest: true, full_name: "Guest Viewer" },
+  aud: "authenticated",
+  created_at: new Date().toISOString(),
+} as unknown as User;
 
 const withTimeout = <T,>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
   Promise.race([promise, new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))]);
@@ -20,6 +33,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<"admin" | "user" | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(GUEST_KEY) === "1";
+  });
 
   const fetchRole = async (userId: string): Promise<"admin" | "user"> => {
     try {
@@ -40,24 +57,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth listener FIRST (non-blocking role fetch inside)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       const currentUser = session?.user ?? null;
-      setUser(currentUser);
-
       if (currentUser) {
-        // Fire-and-forget role fetch — do NOT await inside listener
+        // Real auth supersedes guest mode
+        try { localStorage.removeItem(GUEST_KEY); } catch {}
+        setIsGuest(false);
+        setUser(currentUser);
         fetchRole(currentUser.id).then((r) => {
           if (mounted) setRole(r);
         });
       } else {
+        setUser(null);
         setRole(null);
       }
       setLoading(false);
     });
 
-    // Then get initial session with timeout
     const initSession = async () => {
       try {
         const { data: { session } } = await withTimeout(
@@ -67,8 +84,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
         if (!mounted) return;
         const currentUser = session?.user ?? null;
-        setUser(currentUser);
         if (currentUser) {
+          try { localStorage.removeItem(GUEST_KEY); } catch {}
+          setIsGuest(false);
+          setUser(currentUser);
           const r = await fetchRole(currentUser.id);
           if (mounted) setRole(r);
         }
@@ -91,13 +110,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    try { localStorage.removeItem(GUEST_KEY); } catch {}
+    setIsGuest(false);
     await supabase.auth.signOut();
     setUser(null);
     setRole(null);
   };
 
+  const enterGuest = () => {
+    try { localStorage.setItem(GUEST_KEY, "1"); } catch {}
+    setIsGuest(true);
+  };
+
+  const exitGuest = () => {
+    try { localStorage.removeItem(GUEST_KEY); } catch {}
+    setIsGuest(false);
+  };
+
+  // Expose synthetic guest user when in guest mode and no real user
+  const effectiveUser = user ?? (isGuest ? GUEST_USER : null);
+  const effectiveRole: "admin" | "user" | null = user ? role : (isGuest ? "user" : null);
+
   return (
-    <AuthContext.Provider value={{ user, role, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user: effectiveUser, role: effectiveRole, loading, isGuest: isGuest && !user, signIn, signOut, enterGuest, exitGuest }}>
       {children}
     </AuthContext.Provider>
   );
