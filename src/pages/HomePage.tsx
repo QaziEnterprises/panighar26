@@ -298,7 +298,7 @@ export default function HomePage() {
           </button>
         </div>
         {mobileMenu && (
-          <div className="xl:hidden bg-white/90 backdrop-blur-xl border-t border-white/50 px-4 py-4 space-y-2 max-h-[80vh] overflow-y-auto animate-fade-in">
+          <div className="lg:hidden bg-white/90 backdrop-blur-xl border-t border-white/50 px-4 py-4 space-y-2 max-h-[80vh] overflow-y-auto animate-fade-in">
             {NAV_LINKS.map((l) => (
               <button
                 key={l.href}
