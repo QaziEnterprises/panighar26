@@ -259,14 +259,14 @@ export default function HomePage() {
             </span>
           </button>
 
-          {/* Desktop nav — glass pill */}
-          <div className="hidden md:flex items-center gap-2">
-            <div className="flex items-center gap-1 rounded-full border border-white/50 bg-white/40 backdrop-blur-2xl px-1.5 py-1 shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.7),0_8px_24px_-12px_hsl(217_91%_30%/0.25)]">
+          {/* Desktop nav — glass pill (only on wide screens to avoid crowding) */}
+          <div className="hidden xl:flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-0.5 rounded-full border border-white/50 bg-white/40 backdrop-blur-2xl px-1 py-1 shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.7),0_8px_24px_-12px_hsl(217_91%_30%/0.25)]">
               {NAV_LINKS.map((l) => (
                 <button
                   key={l.href}
                   onClick={() => scrollTo(l.href)}
-                  className="relative px-3 py-1.5 rounded-full text-[13px] font-medium text-foreground/70 hover:text-primary transition-all duration-300 hover:bg-white/80 hover:shadow-[0_4px_14px_-4px_hsl(217_91%_50%/0.35)] hover:-translate-y-0.5 active:translate-y-0"
+                  className="relative px-2.5 py-1.5 rounded-full text-[12.5px] font-medium text-foreground/70 hover:text-primary transition-all duration-300 hover:bg-white/80 hover:shadow-[0_4px_14px_-4px_hsl(217_91%_50%/0.35)] hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap"
                 >
                   {l.label}
                 </button>
@@ -276,22 +276,22 @@ export default function HomePage() {
               size="sm"
               variant="outline"
               onClick={handleGuest}
-              className="rounded-full border-primary/40 text-primary hover:bg-primary/10 hover:border-primary transition-all duration-300"
+              className="rounded-full border-primary/40 text-primary hover:bg-primary/10 hover:border-primary transition-all duration-300 whitespace-nowrap"
             >
-              View as Guest
+              Guest
             </Button>
             <Link to="/login">
               <Button
                 size="sm"
-                className="ml-1 rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-[0_6px_18px_-4px_hsl(217_91%_50%/0.55)] hover:shadow-[0_10px_28px_-6px_hsl(217_91%_50%/0.7)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300"
+                className="ml-1 rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-[0_6px_18px_-4px_hsl(217_91%_50%/0.55)] hover:shadow-[0_10px_28px_-6px_hsl(217_91%_50%/0.7)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 whitespace-nowrap"
               >
-                Dashboard Login
+                Login
               </Button>
             </Link>
           </div>
 
           <button
-            className="md:hidden p-2 rounded-full bg-white/60 backdrop-blur-xl border border-white/50 transition-all duration-300 hover:bg-white/90 hover:scale-105"
+            className="xl:hidden p-2 rounded-full bg-white/60 backdrop-blur-xl border border-white/50 transition-all duration-300 hover:bg-white/90 hover:scale-105"
             onClick={() => setMobileMenu(!mobileMenu)}
           >
             {mobileMenu ? <X className="h-5 w-5 text-primary" /> : <Menu className="h-5 w-5 text-primary" />}
