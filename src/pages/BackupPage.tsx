@@ -203,12 +203,13 @@ export default function BackupPage() {
   async function localBackup() {
     setLocalBackingUp(true);
     try {
-      const backupData: Record<string, any[]> = {};
-      for (const table of LOCAL_BACKUP_TABLES) {
-        const { data } = await supabase.from(table as any).select("*");
-        backupData[table] = data || [];
-      }
-      const blob = new Blob([JSON.stringify({ version: 1, created_at: new Date().toISOString(), tables: backupData }, null, 2)], { type: "application/json" });
+      const res = await supabase.functions.invoke("google-drive-backup", {
+        headers: await getAuthHeaders(),
+        body: { action: "dump" },
+      });
+      if (res.error) throw res.error;
+      if (res.data?.error) throw new Error(res.data.error);
+      const blob = new Blob([JSON.stringify(res.data.payload, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -239,20 +240,14 @@ export default function BackupPage() {
         let totalRecords = 0;
         let tablesRestored = 0;
 
-        for (const table of LOCAL_BACKUP_TABLES) {
-          if (data.tables[table] && Array.isArray(data.tables[table]) && data.tables[table].length > 0) {
-            // Delete existing then insert
-            await supabase.from(table as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
-            // Insert in batches of 100
-            const records = data.tables[table];
-            for (let i = 0; i < records.length; i += 100) {
-              const batch = records.slice(i, i + 100);
-              await supabase.from(table as any).insert(batch);
-            }
-            totalRecords += records.length;
-            tablesRestored++;
-          }
-        }
+        const res = await supabase.functions.invoke("google-drive-restore", {
+          headers: await getAuthHeaders(),
+          body: { action: "restorePayload", payload: data },
+        });
+        if (res.error) throw res.error;
+        if (res.data?.error) throw new Error(res.data.error);
+        totalRecords = res.data.total_records || 0;
+        tablesRestored = res.data.tables_restored || 0;
 
         sonnerToast.success(`Restored ${tablesRestored} tables with ${totalRecords} records from local backup!`);
       } catch (err: any) {
