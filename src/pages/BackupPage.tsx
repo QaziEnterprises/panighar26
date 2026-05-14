@@ -130,10 +130,10 @@ export default function BackupPage() {
   async function runBackup() {
     setBackingUp(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("google-drive-backup", {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        headers: await getAuthHeaders(),
       });
+      if (res.error) throw res.error;
       if (res.data?.success) {
         toast({ title: "Backup Complete!", description: `${res.data.tables_count} tables backed up to Google Drive.` });
         loadHistory();
@@ -147,8 +147,12 @@ export default function BackupPage() {
   }
 
   async function disconnectDrive() {
-    await supabase.from("google_drive_tokens").delete().eq("user_id", user?.id || "");
+    await supabase.functions.invoke("google-drive-auth", {
+      headers: await getAuthHeaders(),
+      body: { action: "disconnect" },
+    });
     setConnected(false);
+    setHistory([]);
     toast({ title: "Disconnected", description: "Google Drive has been disconnected." });
   }
 
@@ -158,11 +162,12 @@ export default function BackupPage() {
     setSelectedFile(null);
     setConfirmRestore(false);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("google-drive-restore", {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        headers: await getAuthHeaders(),
         body: { action: "list" },
       });
+      if (res.error) throw res.error;
+      if (res.data?.error) throw new Error(res.data.error);
       setDriveFiles(res.data?.files || []);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -174,11 +179,11 @@ export default function BackupPage() {
     if (!selectedFile) return;
     setRestoring(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("google-drive-restore", {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        headers: await getAuthHeaders(),
         body: { action: "restore", file_id: selectedFile.id },
       });
+      if (res.error) throw res.error;
       if (res.data?.success) {
         toast({
           title: "Restore Complete!",
