@@ -76,34 +76,46 @@ export default function BackupPage() {
     }
   }, []);
 
+  async function getAuthHeaders() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("Please log in again to continue.");
+    return { Authorization: `Bearer ${session.access_token}` };
+  }
+
   async function checkConnection() {
     setLoading(true);
-    const { data } = await supabase
-      .from("google_drive_tokens")
-      .select("id")
-      .eq("user_id", user?.id || "")
-      .maybeSingle();
-    setConnected(!!data);
+    try {
+      const res = await supabase.functions.invoke("google-drive-auth", {
+        headers: await getAuthHeaders(),
+        body: { action: "status" },
+      });
+      setConnected(!!res.data?.connected);
+    } catch {
+      setConnected(false);
+    }
     setLoading(false);
   }
 
   async function loadHistory() {
-    const { data } = await supabase
-      .from("backup_history")
-      .select("*")
-      .eq("user_id", user?.id || "")
-      .order("created_at", { ascending: false })
-      .limit(20);
-    if (data) setHistory(data as unknown as BackupRecord[]);
+    try {
+      const res = await supabase.functions.invoke("google-drive-backup", {
+        headers: await getAuthHeaders(),
+        body: { action: "history" },
+      });
+      setHistory((res.data?.history || []) as BackupRecord[]);
+    } catch {
+      setHistory([]);
+    }
   }
 
   async function connectDrive() {
     setConnecting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("google-drive-auth", {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        headers: await getAuthHeaders(),
+        body: { action: "connect" },
       });
+      if (res.error) throw res.error;
       if (res.data?.url) {
         window.location.href = res.data.url;
       } else {
@@ -118,10 +130,10 @@ export default function BackupPage() {
   async function runBackup() {
     setBackingUp(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("google-drive-backup", {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        headers: await getAuthHeaders(),
       });
+      if (res.error) throw res.error;
       if (res.data?.success) {
         toast({ title: "Backup Complete!", description: `${res.data.tables_count} tables backed up to Google Drive.` });
         loadHistory();
@@ -135,8 +147,12 @@ export default function BackupPage() {
   }
 
   async function disconnectDrive() {
-    await supabase.from("google_drive_tokens").delete().eq("user_id", user?.id || "");
+    await supabase.functions.invoke("google-drive-auth", {
+      headers: await getAuthHeaders(),
+      body: { action: "disconnect" },
+    });
     setConnected(false);
+    setHistory([]);
     toast({ title: "Disconnected", description: "Google Drive has been disconnected." });
   }
 
@@ -146,11 +162,12 @@ export default function BackupPage() {
     setSelectedFile(null);
     setConfirmRestore(false);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("google-drive-restore", {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        headers: await getAuthHeaders(),
         body: { action: "list" },
       });
+      if (res.error) throw res.error;
+      if (res.data?.error) throw new Error(res.data.error);
       setDriveFiles(res.data?.files || []);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -162,11 +179,11 @@ export default function BackupPage() {
     if (!selectedFile) return;
     setRestoring(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("google-drive-restore", {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        headers: await getAuthHeaders(),
         body: { action: "restore", file_id: selectedFile.id },
       });
+      if (res.error) throw res.error;
       if (res.data?.success) {
         toast({
           title: "Restore Complete!",
@@ -186,12 +203,13 @@ export default function BackupPage() {
   async function localBackup() {
     setLocalBackingUp(true);
     try {
-      const backupData: Record<string, any[]> = {};
-      for (const table of LOCAL_BACKUP_TABLES) {
-        const { data } = await supabase.from(table as any).select("*");
-        backupData[table] = data || [];
-      }
-      const blob = new Blob([JSON.stringify({ version: 1, created_at: new Date().toISOString(), tables: backupData }, null, 2)], { type: "application/json" });
+      const res = await supabase.functions.invoke("google-drive-backup", {
+        headers: await getAuthHeaders(),
+        body: { action: "dump" },
+      });
+      if (res.error) throw res.error;
+      if (res.data?.error) throw new Error(res.data.error);
+      const blob = new Blob([JSON.stringify(res.data.payload, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -222,20 +240,14 @@ export default function BackupPage() {
         let totalRecords = 0;
         let tablesRestored = 0;
 
-        for (const table of LOCAL_BACKUP_TABLES) {
-          if (data.tables[table] && Array.isArray(data.tables[table]) && data.tables[table].length > 0) {
-            // Delete existing then insert
-            await supabase.from(table as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
-            // Insert in batches of 100
-            const records = data.tables[table];
-            for (let i = 0; i < records.length; i += 100) {
-              const batch = records.slice(i, i + 100);
-              await supabase.from(table as any).insert(batch);
-            }
-            totalRecords += records.length;
-            tablesRestored++;
-          }
-        }
+        const res = await supabase.functions.invoke("google-drive-restore", {
+          headers: await getAuthHeaders(),
+          body: { action: "restorePayload", payload: data },
+        });
+        if (res.error) throw res.error;
+        if (res.data?.error) throw new Error(res.data.error);
+        totalRecords = res.data.total_records || 0;
+        tablesRestored = res.data.tables_restored || 0;
 
         sonnerToast.success(`Restored ${tablesRestored} tables with ${totalRecords} records from local backup!`);
       } catch (err: any) {

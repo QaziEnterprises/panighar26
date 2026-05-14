@@ -34,22 +34,23 @@ export default function AdminPage() {
   const [editRole, setEditRole] = useState("user");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-  const loadUsers = async () => {
-    const { data: profiles } = await supabase.from("profiles").select("*");
-    const { data: roles } = await supabase.from("user_roles").select("*");
+  const getAuthHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("Please log in again to continue.");
+    return { Authorization: `Bearer ${session.access_token}` };
+  };
 
-    if (profiles) {
-      const userList = profiles.map((p: any) => {
-        const userRole = roles?.find((r: any) => r.user_id === p.user_id);
-        return {
-          user_id: p.user_id,
-          email: p.email,
-          display_name: p.display_name,
-          created_at: p.created_at,
-          role: userRole?.role || "user",
-        };
+  const loadUsers = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-users", {
+        headers: await getAuthHeaders(),
+        body: { action: "list" },
       });
-      setUsers(userList);
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setUsers(data?.users || []);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load users");
     }
   };
 
@@ -63,6 +64,7 @@ export default function AdminPage() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("manage-users", {
+        headers: await getAuthHeaders(),
         body: { action: "create", email: newEmail, password: newPassword, displayName: newName || newEmail.split("@")[0] },
       });
       if (error) throw error;
@@ -87,6 +89,7 @@ export default function AdminPage() {
     if (!window.confirm(`Are you sure you want to delete user ${email}?`)) return;
     try {
       const { data, error } = await supabase.functions.invoke("manage-users", {
+        headers: await getAuthHeaders(),
         body: { action: "delete", userId },
       });
       if (error) throw error;
@@ -111,6 +114,7 @@ export default function AdminPage() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("manage-users", {
+        headers: await getAuthHeaders(),
         body: {
           action: "update",
           userId: editUser.user_id,

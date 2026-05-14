@@ -3,21 +3,7 @@ import {
   corsHeaders, json, getAuthedUser, getAccessToken, adminClient, BACKUP_TABLES,
 } from "../_shared/google.ts";
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
-  const user = await getAuthedUser(req);
-  if (!user) return json({ error: "Unauthorized" }, 401);
-
-  const admin = adminClient();
-  let accessToken: string;
-  try {
-    accessToken = await getAccessToken(user.id);
-  } catch (e: any) {
-    return json({ error: e?.message || "Not connected to Google Drive" }, 400);
-  }
-
-  // Collect all tables
+async function collectDump(admin: ReturnType<typeof adminClient>) {
   const dump: Record<string, unknown[]> = {};
   for (const table of BACKUP_TABLES) {
     const { data, error } = await admin.from(table).select("*");
@@ -27,13 +13,49 @@ Deno.serve(async (req) => {
     }
     dump[table] = data || [];
   }
+  return dump;
+}
 
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const user = await getAuthedUser(req);
+  if (!user) return json({ error: "Unauthorized" }, 401);
+
+  const admin = adminClient();
+  const bodyJson = await req.json().catch(() => ({}));
+  const action = bodyJson?.action || "backup";
+
+  if (action === "history") {
+    const { data, error } = await admin
+      .from("backup_history")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (error) return json({ error: error.message }, 500);
+    return json({ history: data || [] });
+  }
+
+  const dump = await collectDump(admin);
   const payload = {
     version: 1,
     created_at: new Date().toISOString(),
     user_id: user.id,
     tables: dump,
   };
+
+  if (action === "dump") {
+    return json({ success: true, payload, tables_count: Object.keys(dump).length });
+  }
+
+  let accessToken: string;
+  try {
+    accessToken = await getAccessToken(user.id);
+  } catch (e: any) {
+    return json({ error: e?.message || "Not connected to Google Drive" }, 400);
+  }
+
   const fileName = `qazi_backup_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
   const fileContent = JSON.stringify(payload);
 

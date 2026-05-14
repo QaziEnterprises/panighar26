@@ -50,6 +50,32 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { action } = body || {};
 
+    if (action === "list") {
+      const { data: profiles, error: profileErr } = await admin
+        .from("profiles")
+        .select("user_id,email,display_name,created_at")
+        .order("created_at", { ascending: false });
+      if (profileErr) return json({ error: profileErr.message }, 500);
+
+      const { data: roles, error: roleErr } = await admin
+        .from("user_roles")
+        .select("user_id,role");
+      if (roleErr) return json({ error: roleErr.message }, 500);
+
+      const users = (profiles || []).map((p: any) => {
+        const userRole = roles?.find((r: any) => r.user_id === p.user_id);
+        return {
+          user_id: p.user_id,
+          email: p.email,
+          display_name: p.display_name,
+          created_at: p.created_at,
+          role: userRole?.role || "user",
+        };
+      });
+
+      return json({ users });
+    }
+
     if (action === "create") {
       const { email, password, displayName } = body;
       if (!email || !password) return json({ error: "Email and password required" }, 400);

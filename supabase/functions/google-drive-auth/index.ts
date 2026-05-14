@@ -2,7 +2,7 @@
 import {
   corsHeaders, json, getAuthedUser, makeState, verifyState,
   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, REDIRECT_URI, SCOPES,
-  APP_URL, adminClient,
+  adminClient, getReturnTo,
 } from "../_shared/google.ts";
 
 Deno.serve(async (req) => {
@@ -18,8 +18,8 @@ Deno.serve(async (req) => {
 
   // OAuth callback from Google
   if (code && state) {
-    const userId = await verifyState(state);
-    if (!userId) {
+    const verified = await verifyState(state);
+    if (!verified) {
       return new Response("Invalid or expired state", { status: 400 });
     }
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -40,17 +40,26 @@ Deno.serve(async (req) => {
     const tokens = await tokenRes.json();
     const expiry = Date.now() + (tokens.expires_in ?? 3600) * 1000;
     const admin = adminClient();
+    const { data: existingToken } = await admin
+      .from("google_drive_tokens")
+      .select("refresh_token")
+      .eq("user_id", verified.userId)
+      .maybeSingle();
+    const refreshToken = tokens.refresh_token || existingToken?.refresh_token;
+    if (!refreshToken) {
+      return new Response("Google did not return a refresh token. Remove this app from your Google account access, then connect again.", { status: 400 });
+    }
     await admin.from("google_drive_tokens").upsert({
-      user_id: userId,
+      user_id: verified.userId,
       access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
+      refresh_token: refreshToken,
       expiry_date: expiry,
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
 
     return new Response(null, {
       status: 302,
-      headers: { Location: `${APP_URL}/backup?connected=true` },
+      headers: { Location: `${verified.returnTo}?connected=true` },
     });
   }
 
@@ -58,7 +67,25 @@ Deno.serve(async (req) => {
   const user = await getAuthedUser(req);
   if (!user) return json({ error: "Unauthorized" }, 401);
 
-  const st = await makeState(user.id);
+  const body = await req.json().catch(() => ({}));
+  const action = body?.action || "connect";
+  const admin = adminClient();
+
+  if (action === "status") {
+    const { data } = await admin
+      .from("google_drive_tokens")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    return json({ connected: !!data });
+  }
+
+  if (action === "disconnect") {
+    await admin.from("google_drive_tokens").delete().eq("user_id", user.id);
+    return json({ success: true, connected: false });
+  }
+
+  const st = await makeState(user.id, getReturnTo(req));
   const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   authUrl.searchParams.set("client_id", GOOGLE_CLIENT_ID);
   authUrl.searchParams.set("redirect_uri", REDIRECT_URI);

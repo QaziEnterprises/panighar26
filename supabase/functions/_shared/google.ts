@@ -28,6 +28,27 @@ export const SCOPES = "https://www.googleapis.com/auth/drive.file";
 
 export const adminClient = () => createClient(SUPABASE_URL, SERVICE_ROLE);
 
+function isAllowedReturnOrigin(origin: string) {
+  try {
+    const u = new URL(origin);
+    return u.protocol === "http:" && u.hostname === "localhost"
+      || u.protocol === "https:" && (u.hostname === "panighar26.lovable.app" || u.hostname.endsWith(".lovable.app"));
+  } catch {
+    return false;
+  }
+}
+
+export function getReturnTo(req: Request) {
+  const origin = req.headers.get("Origin") || req.headers.get("Referer") || APP_URL;
+  try {
+    const u = new URL(origin);
+    const base = `${u.protocol}//${u.host}`;
+    return isAllowedReturnOrigin(base) ? `${base}/backup` : `${APP_URL}/backup`;
+  } catch {
+    return `${APP_URL}/backup`;
+  }
+}
+
 export async function getAuthedUser(req: Request) {
   const auth = req.headers.get("Authorization") || "";
   const token = auth.replace("Bearer ", "");
@@ -54,14 +75,20 @@ async function hmac(key: string, msg: string) {
     .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export async function makeState(userId: string) {
-  const payload = btoa(JSON.stringify({ uid: userId, t: Date.now() }))
+export async function makeState(userId: string, returnTo: string) {
+  let safeReturnTo = `${APP_URL}/backup`;
+  try {
+    safeReturnTo = isAllowedReturnOrigin(new URL(returnTo).origin) ? returnTo : safeReturnTo;
+  } catch {
+    safeReturnTo = `${APP_URL}/backup`;
+  }
+  const payload = btoa(JSON.stringify({ uid: userId, t: Date.now(), r: safeReturnTo }))
     .replace(/=+$/, "");
   const sig = await hmac(SERVICE_ROLE, payload);
   return `${payload}.${sig}`;
 }
 
-export async function verifyState(state: string): Promise<string | null> {
+export async function verifyState(state: string): Promise<{ userId: string; returnTo: string } | null> {
   const [payload, sig] = state.split(".");
   if (!payload || !sig) return null;
   const expected = await hmac(SERVICE_ROLE, payload);
@@ -69,7 +96,12 @@ export async function verifyState(state: string): Promise<string | null> {
   try {
     const decoded = JSON.parse(atob(payload + "===".slice(0, (4 - payload.length % 4) % 4)));
     if (Date.now() - decoded.t > 10 * 60 * 1000) return null;
-    return decoded.uid as string;
+    return {
+      userId: decoded.uid as string,
+      returnTo: typeof decoded.r === "string" && isAllowedReturnOrigin(new URL(decoded.r).origin)
+        ? decoded.r
+        : `${APP_URL}/backup`,
+    };
   } catch {
     return null;
   }
@@ -121,5 +153,15 @@ export const BACKUP_TABLES = [
   "expenses", "expense_categories",
   "ledger_entries", "daily_summaries", "cash_register",
   "price_lists", "price_list_items",
-  "todos", "notifications",
+  "todos", "notifications", "audit_logs", "backup_history",
 ];
+
+export const RESTORE_DELETE_ORDER = [
+  "return_items", "returns", "receivable_payments", "sale_items", "sale_transactions",
+  "purchase_items", "purchases", "price_list_items", "price_lists", "ledger_entries",
+  "expenses", "expense_categories", "daily_summaries", "cash_register",
+  "todos", "notifications", "audit_logs", "products", "product_categories", "contacts",
+  "backup_history",
+];
+
+export const RESTORE_INSERT_ORDER = [...RESTORE_DELETE_ORDER].reverse();
