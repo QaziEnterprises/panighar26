@@ -4,11 +4,51 @@ import {
   RESTORE_DELETE_ORDER, RESTORE_INSERT_ORDER,
 } from "../_shared/google.ts";
 
+async function restoreTables(payload: any) {
+  const tables = payload?.tables || {};
+  const admin = adminClient();
+  let totalRecords = 0;
+  let tablesRestored = 0;
+
+  for (const table of RESTORE_DELETE_ORDER) {
+    await admin.from(table).delete().not("id", "is", null);
+  }
+
+  for (const table of RESTORE_INSERT_ORDER) {
+    const rows = tables[table];
+    if (!Array.isArray(rows) || rows.length === 0) continue;
+    for (let i = 0; i < rows.length; i += 500) {
+      const chunk = rows.slice(i, i + 500);
+      const { error } = await admin.from(table).insert(chunk);
+      if (error) {
+        console.error(`Restore failed for ${table}:`, error);
+        throw new Error(`Restore failed for ${table}: ${error.message}`);
+      }
+    }
+    totalRecords += rows.length;
+    tablesRestored++;
+  }
+
+  return { tables_restored: tablesRestored, total_records: totalRecords };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const user = await getAuthedUser(req);
   if (!user) return json({ error: "Unauthorized" }, 401);
+
+  const body = await req.json().catch(() => ({}));
+  const action = body?.action || "list";
+
+  if (action === "restorePayload") {
+    try {
+      const result = await restoreTables(body?.payload);
+      return json({ success: true, ...result });
+    } catch (e: any) {
+      return json({ error: e?.message || "Restore failed" }, 500);
+    }
+  }
 
   let accessToken: string;
   try {
@@ -16,9 +56,6 @@ Deno.serve(async (req) => {
   } catch (e: any) {
     return json({ error: e?.message || "Not connected to Google Drive" }, 400);
   }
-
-  const body = await req.json().catch(() => ({}));
-  const action = body?.action || "list";
 
   if (action === "list") {
     const q = encodeURIComponent("name contains 'qazi_backup_' and trashed=false");
