@@ -82,6 +82,8 @@ Deno.serve(async (req) => {
     user_id: user.id,
     file_name: file.name || fileName,
     file_id: file.id,
+    size_bytes: file.size ? Number(file.size) : fileContent.length,
+    tables_backed_up: Object.keys(dump),
     status: "completed",
     type: "google_drive",
   });
