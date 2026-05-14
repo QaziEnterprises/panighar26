@@ -76,7 +76,12 @@ async function hmac(key: string, msg: string) {
 }
 
 export async function makeState(userId: string, returnTo: string) {
-  const safeReturnTo = isAllowedReturnOrigin(new URL(returnTo).origin) ? returnTo : `${APP_URL}/backup`;
+  let safeReturnTo = `${APP_URL}/backup`;
+  try {
+    safeReturnTo = isAllowedReturnOrigin(new URL(returnTo).origin) ? returnTo : safeReturnTo;
+  } catch {
+    safeReturnTo = `${APP_URL}/backup`;
+  }
   const payload = btoa(JSON.stringify({ uid: userId, t: Date.now(), r: safeReturnTo }))
     .replace(/=+$/, "");
   const sig = await hmac(SERVICE_ROLE, payload);
@@ -148,5 +153,15 @@ export const BACKUP_TABLES = [
   "expenses", "expense_categories",
   "ledger_entries", "daily_summaries", "cash_register",
   "price_lists", "price_list_items",
-  "todos", "notifications",
+  "todos", "notifications", "audit_logs", "backup_history",
 ];
+
+export const RESTORE_DELETE_ORDER = [
+  "return_items", "returns", "receivable_payments", "sale_items", "sale_transactions",
+  "purchase_items", "purchases", "price_list_items", "price_lists", "ledger_entries",
+  "expenses", "expense_categories", "daily_summaries", "cash_register",
+  "todos", "notifications", "audit_logs", "products", "product_categories", "contacts",
+  "backup_history",
+];
+
+export const RESTORE_INSERT_ORDER = [...RESTORE_DELETE_ORDER].reverse();
