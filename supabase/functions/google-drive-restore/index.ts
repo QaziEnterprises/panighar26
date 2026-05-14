@@ -78,35 +78,11 @@ Deno.serve(async (req) => {
     );
     if (!dl.ok) return json({ error: `Download failed: ${await dl.text()}` }, 500);
     const payload = await dl.json();
-    const tables = payload?.tables || {};
-
-    const admin = adminClient();
-    let totalRecords = 0;
-    let tablesRestored = 0;
-
-    for (const table of RESTORE_DELETE_ORDER) {
-      await admin.from(table).delete().not("id", "is", null);
-    }
-
-    for (const table of RESTORE_INSERT_ORDER) {
-      const rows = tables[table];
-      if (!Array.isArray(rows) || rows.length === 0) continue;
-      for (let i = 0; i < rows.length; i += 500) {
-        const chunk = rows.slice(i, i + 500);
-        const { error } = await admin.from(table).insert(chunk);
-        if (error) {
-          console.error(`Restore failed for ${table}:`, error);
-          return json({ error: `Restore failed for ${table}: ${error.message}` }, 500);
-        }
-      }
-      totalRecords += rows.length;
-      tablesRestored++;
-    }
+    const result = await restoreTables(payload);
 
     return json({
       success: true,
-      tables_restored: tablesRestored,
-      total_records: totalRecords,
+      ...result,
     });
   }
 
