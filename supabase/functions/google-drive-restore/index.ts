@@ -1,6 +1,7 @@
 // List Drive backup files, or restore a selected one back into the database.
 import {
-  corsHeaders, json, getAuthedUser, getAccessToken, adminClient, BACKUP_TABLES,
+  corsHeaders, json, getAuthedUser, getAccessToken, adminClient,
+  RESTORE_DELETE_ORDER, RESTORE_INSERT_ORDER,
 } from "../_shared/google.ts";
 
 Deno.serve(async (req) => {
@@ -46,11 +47,13 @@ Deno.serve(async (req) => {
     let totalRecords = 0;
     let tablesRestored = 0;
 
-    for (const table of BACKUP_TABLES) {
+    for (const table of RESTORE_DELETE_ORDER) {
+      await admin.from(table).delete().not("id", "is", null);
+    }
+
+    for (const table of RESTORE_INSERT_ORDER) {
       const rows = tables[table];
       if (!Array.isArray(rows) || rows.length === 0) continue;
-      // Wipe & insert in chunks
-      await admin.from(table).delete().not("id", "is", null);
       for (let i = 0; i < rows.length; i += 500) {
         const chunk = rows.slice(i, i + 500);
         const { error } = await admin.from(table).insert(chunk);
