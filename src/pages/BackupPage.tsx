@@ -76,34 +76,46 @@ export default function BackupPage() {
     }
   }, []);
 
+  async function getAuthHeaders() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("Please log in again to continue.");
+    return { Authorization: `Bearer ${session.access_token}` };
+  }
+
   async function checkConnection() {
     setLoading(true);
-    const { data } = await supabase
-      .from("google_drive_tokens")
-      .select("id")
-      .eq("user_id", user?.id || "")
-      .maybeSingle();
-    setConnected(!!data);
+    try {
+      const res = await supabase.functions.invoke("google-drive-auth", {
+        headers: await getAuthHeaders(),
+        body: { action: "status" },
+      });
+      setConnected(!!res.data?.connected);
+    } catch {
+      setConnected(false);
+    }
     setLoading(false);
   }
 
   async function loadHistory() {
-    const { data } = await supabase
-      .from("backup_history")
-      .select("*")
-      .eq("user_id", user?.id || "")
-      .order("created_at", { ascending: false })
-      .limit(20);
-    if (data) setHistory(data as unknown as BackupRecord[]);
+    try {
+      const res = await supabase.functions.invoke("google-drive-backup", {
+        headers: await getAuthHeaders(),
+        body: { action: "history" },
+      });
+      setHistory((res.data?.history || []) as BackupRecord[]);
+    } catch {
+      setHistory([]);
+    }
   }
 
   async function connectDrive() {
     setConnecting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("google-drive-auth", {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        headers: await getAuthHeaders(),
+        body: { action: "connect" },
       });
+      if (res.error) throw res.error;
       if (res.data?.url) {
         window.location.href = res.data.url;
       } else {
